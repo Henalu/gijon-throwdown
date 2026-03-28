@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Patrocinadores",
-  description: "Sponsors del Gijon Throwdown",
+  description: "Partners y patrocinadores que impulsan Gijon Throwdown",
 };
 
 const tierLabels: Record<string, string> = {
@@ -35,14 +35,14 @@ export default async function PatrocinadoresPage() {
 
   return (
     <div className="min-h-screen">
-      <section className="relative py-20 px-4 overflow-hidden">
+      <section className="relative py-12 sm:py-20 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#061a12] to-background" />
         <div className="relative z-10 max-w-6xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter text-foreground">
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter text-foreground">
             Patrocinadores
           </h1>
           <p className="text-muted-foreground text-lg mt-4">
-            Gracias a quienes hacen posible el Gijon Throwdown.
+            Marcas, colaboradores y partners que hacen posible el evento.
           </p>
         </div>
       </section>
@@ -79,7 +79,7 @@ export default async function PatrocinadoresPage() {
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-20">
-              Informacion de patrocinadores proximamente.
+              La informacion de partners y patrocinadores se publicara muy pronto.
             </p>
           )}
         </div>

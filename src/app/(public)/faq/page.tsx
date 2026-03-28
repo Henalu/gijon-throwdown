@@ -9,7 +9,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "FAQ",
-  description: "Preguntas frecuentes sobre el evento",
+  description: "Preguntas frecuentes sobre Gijon Throwdown, inscripciones y funcionamiento del evento",
 };
 
 export default async function FaqPage() {
@@ -24,14 +24,14 @@ export default async function FaqPage() {
 
   return (
     <div className="min-h-screen">
-      <section className="relative py-20 px-4 overflow-hidden">
+      <section className="relative py-12 sm:py-20 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#061a12] to-background" />
         <div className="relative z-10 max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter text-foreground">
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter text-foreground">
             FAQ
           </h1>
           <p className="text-muted-foreground text-lg mt-4">
-            Preguntas frecuentes sobre el Gijon Throwdown.
+            Toda la informacion util para atletas, equipos, publico y colaboradores.
           </p>
         </div>
       </section>
@@ -57,7 +57,7 @@ export default async function FaqPage() {
             </Accordion>
           ) : (
             <p className="text-center text-muted-foreground py-20">
-              Las FAQ se publicaran pronto.
+              Las preguntas frecuentes se publicaran muy pronto.
             </p>
           )}
         </div>

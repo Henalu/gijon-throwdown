@@ -172,7 +172,6 @@ export function HeatsClient({
                 <HeatCard
                   key={heat.id}
                   heat={heat}
-                  teams={teams}
                   isPending={isPending}
                   onStatusChange={handleStatusChange}
                   onDelete={handleDeleteHeat}
@@ -192,7 +191,6 @@ export function HeatsClient({
                 <HeatCard
                   key={heat.id}
                   heat={heat}
-                  teams={teams}
                   isPending={isPending}
                   onStatusChange={handleStatusChange}
                   onDelete={handleDeleteHeat}
@@ -254,7 +252,6 @@ export function HeatsClient({
 
 function HeatCard({
   heat,
-  teams,
   isPending,
   onStatusChange,
   onDelete,
@@ -262,7 +259,6 @@ function HeatCard({
   onRemoveLane,
 }: {
   heat: HeatRow;
-  teams: { id: string; name: string; category_id: string }[];
   isPending: boolean;
   onStatusChange: (id: string, status: HeatStatus) => void;
   onDelete: (id: string) => void;

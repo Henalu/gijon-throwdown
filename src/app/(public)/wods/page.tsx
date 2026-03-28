@@ -1,12 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
-import { Dumbbell, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { ArrowRight, ListChecks } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "WODs",
-  description: "Los entrenamientos de la competicion",
+  description: "WODs, standards y formato de score de la competicion",
 };
 
 const wodTypeLabels: Record<string, string> = {
@@ -27,85 +27,128 @@ export default async function WodsPage() {
     .eq("is_visible", true)
     .order("sort_order");
 
+  const visibleWorkouts = workouts ?? [];
+  const timedWorkouts = visibleWorkouts.filter((wod) => wod.time_cap_seconds).length;
+  const heavierIsBetterCount = visibleWorkouts.filter((wod) => wod.higher_is_better).length;
+
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <section className="relative py-20 px-4 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#061a12] to-background" />
-        <div className="relative z-10 max-w-6xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter text-foreground">
-            WODs
-          </h1>
-          <p className="text-muted-foreground text-lg mt-4 max-w-2xl">
-            Los entrenamientos que definen el Gijon Throwdown. Preparate para darlo todo.
-          </p>
+      <section className="relative overflow-hidden border-b border-white/6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(120,199,167,0.11),_transparent_42%),linear-gradient(180deg,rgba(14,16,14,1),rgba(13,15,13,1))]" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-10 sm:pb-14 sm:pt-14">
+          <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
+            <div className="max-w-3xl">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-brand-green/74">
+                WODs
+              </p>
+              <h1 className="mt-4 text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl">
+                WODs, standards y formato de score.
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-white/72">
+                Consulta cada prueba de la competicion con su time cap, logica de
+                puntuacion y acceso al detalle completo cuando se publique.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[1.7rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
+                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                  WODs visibles
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-white">{visibleWorkouts.length}</p>
+              </div>
+              <div className="rounded-[1.7rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
+                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                  Con time cap
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-white">{timedWorkouts}</p>
+              </div>
+              <div className="rounded-[1.7rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
+                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                  Score alto gana
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-white">{heavierIsBetterCount}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* WOD Cards */}
-      <section className="px-4 pb-20">
-        <div className="max-w-6xl mx-auto space-y-8">
-          {workouts && workouts.length > 0 ? (
-            workouts.map((wod, index) => (
+      <section className="px-4 py-10 sm:py-12">
+        <div className="mx-auto max-w-7xl space-y-4">
+          {visibleWorkouts.length > 0 ? (
+            visibleWorkouts.map((wod, index) => (
               <Link
                 key={wod.id}
                 href={`/wods/${wod.slug}`}
-                className="group block relative p-8 rounded-2xl bg-card border border-border hover:border-brand-green/30 transition-all duration-300"
+                className="group block rounded-[1.95rem] bg-white/[0.03] px-5 py-5 ring-1 ring-white/7 transition-colors hover:bg-white/[0.05] sm:px-6 sm:py-6"
               >
-                <div className="flex flex-col md:flex-row md:items-start gap-6">
-                  {/* Number */}
-                  <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-brand-green/10 flex items-center justify-center">
-                    <span className="text-2xl font-black text-brand-green">
+                <div className="grid gap-4 lg:grid-cols-[5rem_1fr_auto] lg:items-start lg:gap-6">
+                  <div>
+                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-brand-green/78">
                       {String(index + 1).padStart(2, "0")}
-                    </span>
+                    </p>
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-3 mb-3">
-                      <h2 className="text-2xl md:text-3xl font-black text-foreground">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-3xl font-medium tracking-[-0.05em] text-white">
                         {wod.name}
                       </h2>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 mb-4">
                       <Badge
                         variant="outline"
-                        className="border-brand-green/40 text-brand-green"
+                        className="border-white/8 bg-white/[0.04] text-[0.68rem] uppercase tracking-[0.18em] text-white/72"
                       >
-                        <Dumbbell size={12} className="mr-1" />
                         {wodTypeLabels[wod.wod_type] || wod.wod_type}
                       </Badge>
-                      {wod.time_cap_seconds && (
-                        <Badge variant="outline">
-                          <Clock size={12} className="mr-1" />
-                          {Math.floor(wod.time_cap_seconds / 60)} min
-                          {wod.wod_type === "for_time" ? " cap" : ""}
-                        </Badge>
-                      )}
-                      {wod.higher_is_better && (
-                        <Badge variant="outline" className="border-brand-cyan/40 text-brand-cyan">
-                          Mas es mejor
-                        </Badge>
-                      )}
                     </div>
 
-                    <p className="text-muted-foreground whitespace-pre-line text-sm md:text-base leading-relaxed">
+                    <p className="mt-4 line-clamp-4 whitespace-pre-line text-sm leading-6 text-muted-foreground sm:text-base">
                       {wod.description}
                     </p>
+                  </div>
 
-                    <div className="mt-4 flex items-center gap-1 text-sm text-brand-green opacity-0 group-hover:opacity-100 transition-opacity">
-                      Ver standards y detalle <ArrowRight size={14} />
+                  <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[15rem] lg:grid-cols-1">
+                    <div className="rounded-[1.2rem] bg-black/18 px-3 py-3">
+                      <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
+                        Time cap
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-white">
+                        {wod.time_cap_seconds
+                          ? `${Math.floor(wod.time_cap_seconds / 60)} min`
+                          : "Sin cap"}
+                      </p>
+                    </div>
+                    <div className="rounded-[1.2rem] bg-black/18 px-3 py-3">
+                      <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
+                        Score
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-white">
+                        {wod.higher_is_better ? "Mayor score, mejor puesto" : "Menor tiempo, mejor puesto"}
+                      </p>
+                    </div>
+                    <div className="rounded-[1.2rem] bg-black/18 px-3 py-3">
+                      <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
+                        Abrir
+                      </p>
+                      <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-brand-green">
+                        Ver detalle
+                        <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                      </p>
                     </div>
                   </div>
                 </div>
               </Link>
             ))
           ) : (
-            <div className="text-center py-20">
-              <Dumbbell className="mx-auto text-muted-foreground mb-4" size={48} />
-              <p className="text-muted-foreground text-lg">
-                Los WODs se anunciaran pronto.
+            <div className="rounded-[1.9rem] bg-white/[0.03] px-5 py-10 text-center ring-1 ring-white/7">
+              <ListChecks className="mx-auto text-muted-foreground" size={42} />
+              <p className="mt-4 text-xl font-medium text-white">
+                Los WODs todavia no estan publicados.
+              </p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                En cuanto se publiquen, esta pagina reunira pruebas, standards y
+                formato de score en una sola vista.
               </p>
             </div>
           )}

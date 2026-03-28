@@ -20,7 +20,6 @@ export function OverlayView({
   heatStatus,
   heatStartedAt,
   workoutName,
-  scoreType,
   timeCap,
   lanes,
   initialStates,

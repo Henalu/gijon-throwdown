@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Category, Workout, Heat, Lane, Team } from "@/types";
+import type { Category, Workout, Heat, Lane } from "@/types";
 import { HeatsClient } from "./heats-client";
 
 export type HeatRow = Heat & {

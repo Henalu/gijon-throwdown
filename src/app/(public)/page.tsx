@@ -1,258 +1,398 @@
-import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
+import {
+  ArrowRight,
+  CalendarDays,
+  Clock3,
+  Dumbbell,
+  MapPin,
+  Radio,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { CountdownTimer } from "@/components/home/countdown-timer";
 import { SponsorGrid } from "@/components/sponsors/sponsor-grid";
-import { Badge } from "@/components/ui/badge";
-import {
-  MapPin,
-  Calendar,
-  Users,
-  Dumbbell,
-  Trophy,
-  ArrowRight,
-} from "lucide-react";
-import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+
+function formatEventDate(start: string | null, end: string | null) {
+  if (!start) return "Fechas por confirmar";
+
+  const startDate = new Date(start);
+  const endDate = end ? new Date(end) : null;
+
+  if (!endDate) {
+    return startDate.toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  return `${startDate.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+  })} - ${endDate.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })}`;
+}
+
+function formatHeatTime(value: string | null) {
+  if (!value) return "Hora pendiente";
+  return new Date(value).toLocaleString("es-ES", {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function readRelationName(
+  relation: { name: string } | { name: string }[] | null | undefined
+) {
+  return Array.isArray(relation) ? relation[0]?.name : relation?.name;
+}
 
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const { data: event } = await supabase
-    .from("event_config")
-    .select("*")
-    .single();
+  const [
+    { data: event },
+    { data: categories },
+    { data: workouts },
+    { data: sponsors },
+    { data: activeHeats },
+    { data: nextHeats },
+    { count: teamCount },
+  ] = await Promise.all([
+    supabase.from("event_config").select("*").single(),
+    supabase.from("categories").select("*").order("sort_order"),
+    supabase
+      .from("workouts")
+      .select("*")
+      .eq("is_visible", true)
+      .order("sort_order")
+      .limit(3),
+    supabase
+      .from("sponsors")
+      .select("*, sponsor_slots(*)")
+      .eq("is_active", true)
+      .order("sort_order"),
+    supabase
+      .from("heats")
+      .select("id, heat_number, scheduled_at, category:categories(name), workout:workouts(name)")
+      .eq("status", "active")
+      .order("scheduled_at")
+      .limit(1),
+    supabase
+      .from("heats")
+      .select("id, heat_number, scheduled_at, category:categories(name), workout:workouts(name)")
+      .eq("status", "pending")
+      .order("scheduled_at")
+      .limit(1),
+    supabase.from("teams").select("*", { count: "exact", head: true }),
+  ]);
 
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("*, teams(count)")
-    .order("sort_order");
-
-  const { data: workouts } = await supabase
-    .from("workouts")
-    .select("*")
-    .eq("is_visible", true)
-    .order("sort_order")
-    .limit(3);
-
-  const { data: sponsors } = await supabase
-    .from("sponsors")
-    .select("*, sponsor_slots(*)")
-    .eq("is_active", true)
-    .order("sort_order");
-
+  const activeHeat = activeHeats?.[0] ?? null;
+  const nextHeat = nextHeats?.[0] ?? null;
+  const visibleWorkouts = workouts ?? [];
+  const visibleCategories = categories ?? [];
   const eventDate = event?.date || "2026-06-20";
+  const teamTotal = teamCount ?? 0;
 
   return (
     <div className="min-h-screen">
-      {/* ===== HERO ===== */}
-      <section className="relative flex items-center justify-center min-h-[90vh] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-[#061a12] to-black" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--color-brand-green)_0%,_transparent_60%)] opacity-10" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-green/30 to-transparent" />
+      <section className="relative overflow-hidden border-b border-white/6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(120,199,167,0.12),_transparent_42%),radial-gradient(circle_at_75%_12%,_rgba(126,207,209,0.08),_transparent_30%),linear-gradient(180deg,rgba(15,18,15,1),rgba(13,15,13,1))]" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-10 sm:pb-18 sm:pt-14">
+          <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
+            <div className="max-w-3xl">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.74rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                <span className="text-brand-green/78">
+                  {event?.location || "Gijon, Asturias"}
+                </span>
+                <span>{formatEventDate(event?.date ?? null, event?.end_date ?? null)}</span>
+              </div>
 
-        <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
-          <Badge
-            variant="outline"
-            className="mb-6 border-brand-green/30 text-brand-green bg-brand-green/5 px-4 py-1"
-          >
-            {event?.location || "Gijon, Asturias"}
-          </Badge>
+              <h1 className="mt-5 max-w-3xl text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl md:text-7xl">
+                La competicion que celebra el esfuerzo, el caracter y la comunidad del norte.
+              </h1>
 
-          <h1 className="text-6xl md:text-8xl lg:text-9xl font-black uppercase tracking-tighter leading-none mb-6">
-            <span className="text-white">Gijon</span>
-            <br />
-            <span className="bg-gradient-to-r from-brand-green to-brand-cyan bg-clip-text text-transparent">
-              Throwdown
-            </span>
-          </h1>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-white/72">
+                {event?.description ||
+                  "Gijon Throwdown es una competicion de CrossTraining por equipos nacida en Asturias. Reune a atletas de todos los niveles en un formato pensado para vivir el evento, seguirlo en directo y disfrutarlo con claridad de principio a fin."}
+              </p>
 
-          <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mb-10">
-            {event?.description}
-          </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href={activeHeat ? `/live/${activeHeat.id}` : "/directo"}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5"
+                >
+                  {activeHeat ? "Seguir heat activo" : "Sigue la competicion"}
+                  <ArrowRight size={16} />
+                </Link>
+                <Link
+                  href="/horarios"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-white/[0.06] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/[0.09]"
+                >
+                  Ver horarios
+                </Link>
+              </div>
 
-          <div className="mb-12">
-            <CountdownTimer targetDate={eventDate} />
+              <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                <Link href="/clasificacion" className="transition-colors hover:text-white">
+                  Ranking oficial
+                </Link>
+                <Link href="/wods" className="transition-colors hover:text-white">
+                  WODs y standards
+                </Link>
+                <Link href="/patrocinadores" className="transition-colors hover:text-white">
+                  Partners
+                </Link>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[2rem] bg-white/[0.04] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.28)] ring-1 ring-white/8">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                      Ahora en pista
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">
+                      {activeHeat
+                        ? `${readRelationName(activeHeat.workout) || "Heat activo"}`
+                        : "Preparando la siguiente salida"}
+                    </p>
+                  </div>
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-green/12 text-brand-green">
+                    <Radio size={18} />
+                  </span>
+                </div>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                      Heat activo
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-white/82">
+                      {activeHeat
+                        ? `${readRelationName(activeHeat.category) || "Categoria pendiente"} - Heat ${activeHeat.heat_number}`
+                        : "No hay un heat activo en este momento."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                      Siguiente bloque
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-white/82">
+                      {nextHeat
+                        ? `${readRelationName(nextHeat.workout) || "Siguiente WOD"} - ${formatHeatTime(nextHeat.scheduled_at)}`
+                        : "La agenda detallada se publicara muy pronto."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[1.5rem] bg-white/[0.03] px-4 py-4 ring-1 ring-white/7">
+                  <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                    Sede
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">
+                    {event?.venue_name || event?.location || "Gijon, Asturias"}
+                  </p>
+                </div>
+                <div className="rounded-[1.5rem] bg-white/[0.03] px-4 py-4 ring-1 ring-white/7">
+                  <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                    Equipos
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">
+                    {teamTotal} equipos
+                  </p>
+                </div>
+                <div className="rounded-[1.5rem] bg-white/[0.03] px-4 py-4 ring-1 ring-white/7">
+                  <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                    Categorias
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">
+                    {visibleCategories.length} activas
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-10 sm:py-12">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10">
+          <div className="rounded-[2rem] bg-white/[0.03] px-5 py-6 ring-1 ring-white/7 sm:px-6">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+              Cuenta atras
+            </p>
+            <div className="mt-6">
+              <CountdownTimer targetDate={eventDate} />
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/wods"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-brand-green text-black font-bold rounded-lg hover:bg-brand-green/90 transition-all duration-200 text-lg hover:scale-105"
-            >
-              Ver WODs
-              <ArrowRight size={20} />
-            </Link>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.55rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
+              <CalendarDays className="text-brand-green" size={18} />
+              <p className="mt-4 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                Fechas
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                {formatEventDate(event?.date ?? null, event?.end_date ?? null)}
+              </p>
+            </div>
+            <div className="rounded-[1.55rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
+              <MapPin className="text-brand-green" size={18} />
+              <p className="mt-4 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                Lugar
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                {event?.venue_address || event?.venue_name || "Direccion por confirmar"}
+              </p>
+            </div>
+            <div className="rounded-[1.55rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
+              <Clock3 className="text-brand-green" size={18} />
+              <p className="mt-4 text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                Formato
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                Equipos, directo, ranking y WODs en un mismo sitio
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-8 sm:pb-10">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-5 max-w-2xl">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-brand-green/72">
+              Sigue el evento
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white">
+              Todo lo importante de la competicion, reunido en una sola plataforma.
+            </h2>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
             <Link
               href="/clasificacion"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-white/20 text-white font-bold rounded-lg hover:bg-white/5 transition-all duration-200 text-lg"
+              className="rounded-[1.65rem] bg-white/[0.03] px-5 py-5 ring-1 ring-white/7 transition-colors hover:bg-white/[0.05]"
             >
-              Clasificacion
+              <Trophy className="text-brand-green" size={18} />
+              <p className="mt-4 text-lg font-medium text-white">Clasificacion</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Resultados validados y posicion oficial por categoria.
+              </p>
+            </Link>
+            <Link
+              href="/wods"
+              className="rounded-[1.65rem] bg-white/[0.03] px-5 py-5 ring-1 ring-white/7 transition-colors hover:bg-white/[0.05]"
+            >
+              <Dumbbell className="text-brand-green" size={18} />
+              <p className="mt-4 text-lg font-medium text-white">WODs</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Pruebas, standards y formato de score para atletas y staff.
+              </p>
+            </Link>
+            <Link
+              href="/patrocinadores"
+              className="rounded-[1.65rem] bg-white/[0.03] px-5 py-5 ring-1 ring-white/7 transition-colors hover:bg-white/[0.05]"
+            >
+              <Users className="text-brand-green" size={18} />
+              <p className="mt-4 text-lg font-medium text-white">Partners</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Marcas y colaboradores que impulsan el evento.
+              </p>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ===== INFO EVENTO ===== */}
-      <section className="py-20 px-4 border-t border-border">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="flex items-start gap-4 p-6 rounded-xl bg-card border border-border">
-              <div className="p-3 rounded-lg bg-brand-green/10">
-                <Calendar className="text-brand-green" size={24} />
-              </div>
-              <div>
-                <h3 className="font-bold text-foreground mb-1">Fecha</h3>
-                <p className="text-muted-foreground text-sm">
-                  {event?.date
-                    ? new Date(event.date).toLocaleDateString("es-ES", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })
-                    : "Proximamente"}
-                  {event?.end_date && (
-                    <>
-                      {" - "}
-                      {new Date(event.end_date).toLocaleDateString("es-ES", {
-                        day: "numeric",
-                        month: "long",
-                      })}
-                    </>
-                  )}
-                </p>
-              </div>
+      {visibleCategories.length > 0 && (
+        <section className="px-4 py-10 sm:py-12">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-5 max-w-2xl">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                Categorias
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white">
+                Tres categorias para ordenar el nivel y mantener la competicion abierta.
+              </h2>
             </div>
 
-            <div className="flex items-start gap-4 p-6 rounded-xl bg-card border border-border">
-              <div className="p-3 rounded-lg bg-brand-green/10">
-                <MapPin className="text-brand-green" size={24} />
-              </div>
-              <div>
-                <h3 className="font-bold text-foreground mb-1">Ubicacion</h3>
-                <p className="text-muted-foreground text-sm">
-                  {event?.venue_name}
-                </p>
-                <p className="text-muted-foreground text-xs mt-0.5">
-                  {event?.venue_address}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4 p-6 rounded-xl bg-card border border-border">
-              <div className="p-3 rounded-lg bg-brand-green/10">
-                <Users className="text-brand-green" size={24} />
-              </div>
-              <div>
-                <h3 className="font-bold text-foreground mb-1">Categorias</h3>
-                <p className="text-muted-foreground text-sm">
-                  {categories?.map((c) => c.name).join(", ")}
-                </p>
-                <p className="text-muted-foreground text-xs mt-0.5">
-                  Equipos de 2 personas
-                </p>
-              </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {visibleCategories.slice(0, 4).map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/categorias/${category.slug}`}
+                  className="rounded-[1.6rem] bg-white/[0.03] px-5 py-5 ring-1 ring-white/7 transition-colors hover:bg-white/[0.05]"
+                >
+                  <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
+                    Categoria
+                  </p>
+                  <p className="mt-3 text-lg font-medium text-white">{category.name}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {category.description || `Competicion por equipos de ${category.team_size} atletas`}
+                  </p>
+                </Link>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* ===== WODs PREVIEW ===== */}
-      {workouts && workouts.length > 0 && (
-        <section className="py-20 px-4 border-t border-border">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-foreground">
-                  WODs
-                </h2>
-                <p className="text-muted-foreground mt-2">
-                  Los entrenamientos de la competicion
+      {visibleWorkouts.length > 0 && (
+        <section className="px-4 py-10 sm:py-12">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div className="max-w-2xl">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                  WODs visibles
                 </p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white">
+                  Pruebas publicadas para seguir el evento con contexto real.
+                </h2>
               </div>
               <Link
                 href="/wods"
-                className="hidden md:inline-flex items-center gap-2 text-brand-green hover:text-brand-green/80 font-medium transition-colors"
+                className="hidden text-sm font-medium text-white/72 transition-colors hover:text-white md:inline-flex"
               >
                 Ver todos
-                <ArrowRight size={16} />
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {workouts.map((wod) => (
+            <div className="grid gap-4 lg:grid-cols-3">
+              {visibleWorkouts.map((wod, index) => (
                 <Link
                   key={wod.id}
                   href={`/wods/${wod.slug}`}
-                  className="group relative p-6 rounded-xl bg-card border border-border hover:border-brand-green/30 transition-all duration-300"
+                  className="group rounded-[1.8rem] bg-white/[0.03] p-5 ring-1 ring-white/7 transition-colors hover:bg-white/[0.05]"
                 >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-lg bg-brand-green/10 group-hover:bg-brand-green/20 transition-colors">
-                      <Dumbbell className="text-brand-green" size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-foreground text-lg">
-                        {wod.name}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge
-                          variant="outline"
-                          className="text-xs border-brand-green/30 text-brand-green"
-                        >
-                          {wod.wod_type.replace("_", " ").toUpperCase()}
-                        </Badge>
-                        {wod.time_cap_seconds && (
-                          <Badge variant="outline" className="text-xs">
-                            {Math.floor(wod.time_cap_seconds / 60)} min
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-brand-green/78">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    {wod.time_cap_seconds && (
+                      <span className="text-[0.72rem] uppercase tracking-[0.22em] text-muted-foreground">
+                        {Math.floor(wod.time_cap_seconds / 60)} min cap
+                      </span>
+                    )}
                   </div>
-                  <p className="text-muted-foreground text-sm line-clamp-3 whitespace-pre-line">
-                    {wod.description}
+                  <p className="mt-5 text-2xl font-medium tracking-[-0.04em] text-white">
+                    {wod.name}
                   </p>
-                  <div className="mt-4 flex items-center gap-1 text-sm text-brand-green opacity-0 group-hover:opacity-100 transition-opacity">
-                    Ver detalle <ArrowRight size={14} />
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            <Link
-              href="/wods"
-              className="md:hidden mt-6 inline-flex items-center gap-2 text-brand-green font-medium"
-            >
-              Ver todos los WODs <ArrowRight size={16} />
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {/* ===== CATEGORIAS ===== */}
-      {categories && categories.length > 0 && (
-        <section className="py-20 px-4 border-t border-border">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-foreground mb-10">
-              Categorias
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {categories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`/categorias/${cat.slug}`}
-                  className="group p-6 rounded-xl bg-card border border-border hover:border-brand-green/30 transition-all duration-300"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <Trophy className="text-brand-green" size={20} />
-                    <h3 className="text-xl font-bold text-foreground">
-                      {cat.name}
-                    </h3>
-                  </div>
-                  <p className="text-muted-foreground text-sm mb-4">
-                    {cat.description}
+                  <p className="mt-3 line-clamp-4 whitespace-pre-line text-sm leading-6 text-muted-foreground">
+                    {wod.description ||
+                      "La descripcion oficial de esta prueba se publicara junto con sus standards."}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline">
-                      Equipos de {cat.team_size}
-                    </Badge>
+                  <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-brand-green">
+                    Ver detalle
+                    <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
                   </div>
                 </Link>
               ))}
@@ -261,13 +401,17 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ===== SPONSORS ===== */}
       {sponsors && sponsors.length > 0 && (
-        <section className="py-16 px-4 border-t border-border">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-center text-muted-foreground text-sm tracking-[0.25em] uppercase mb-10">
-              Patrocinadores
-            </h2>
+        <section className="px-4 py-12">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-5 max-w-2xl">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                Partners
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white">
+                Las marcas y colaboradores que hacen posible Gijon Throwdown.
+              </h2>
+            </div>
             <SponsorGrid sponsors={sponsors} />
           </div>
         </section>

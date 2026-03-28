@@ -40,7 +40,6 @@ export function LiveHeatView({
   heatStatus,
   heatStartedAt,
   workoutName,
-  workoutType,
   scoreType,
   timeCap,
   categoryName,

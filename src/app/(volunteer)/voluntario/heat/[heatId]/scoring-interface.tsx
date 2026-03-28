@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Radio, Flag, Minus, Plus, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+import { ArrowLeft, Flag, Minus, Plus, Radio } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { submitLiveUpdate, markLaneFinished } from "@/lib/actions/live-updates";
 import { useRealtimeHeat } from "@/lib/hooks/use-realtime-heat";
 
@@ -26,11 +25,20 @@ interface ScoringInterfaceProps {
   timeCap: number | null;
   categoryName: string;
   lanes: LaneInfo[];
-  initialLaneStates: Record<string, { cumulative: number; is_finished: boolean; update_type: string }>;
+  initialLaneStates: Record<
+    string,
+    { cumulative: number; is_finished: boolean; update_type: string }
+  >;
   userId: string;
 }
 
 type MetricType = "reps" | "calories" | "weight" | "rounds";
+
+interface OptimisticLaneState {
+  cumulative?: number;
+  isFinished?: boolean;
+  updatedAt: number;
+}
 
 const metricLabels: Record<MetricType, string> = {
   reps: "Reps",
@@ -45,7 +53,6 @@ export function ScoringInterface({
   heatStatus,
   heatStartedAt,
   workoutName,
-  workoutType,
   scoreType,
   timeCap,
   categoryName,
@@ -56,39 +63,58 @@ export function ScoringInterface({
     lanes.length === 1 ? lanes[0] : null
   );
   const [metric, setMetric] = useState<MetricType>(
-    scoreType === "weight" ? "weight" : scoreType === "rounds_reps" ? "rounds" : "reps"
+    scoreType === "weight"
+      ? "weight"
+      : scoreType === "rounds_reps"
+        ? "rounds"
+        : "reps"
   );
-  const [localCumulatives, setLocalCumulatives] = useState<Record<string, number>>(() => {
-    const init: Record<string, number> = {};
-    for (const lane of lanes) {
-      init[lane.id] = initialLaneStates[lane.id]?.cumulative ?? 0;
-    }
-    return init;
-  });
-  const [finishedLanes, setFinishedLanes] = useState<Set<string>>(() => {
-    const s = new Set<string>();
-    for (const [laneId, state] of Object.entries(initialLaneStates)) {
-      if (state.is_finished) s.add(laneId);
-    }
-    return s;
-  });
+  const [optimisticLaneStates, setOptimisticLaneStates] = useState<
+    Record<string, OptimisticLaneState>
+  >({});
 
-  // Realtime subscription
   const { laneStates, isConnected } = useRealtimeHeat(heatId);
 
-  // Sync realtime into local state
-  useEffect(() => {
-    for (const [laneId, state] of Object.entries(laneStates)) {
-      setLocalCumulatives((prev) => ({ ...prev, [laneId]: state.cumulative }));
-      if (state.is_finished) {
-        setFinishedLanes((prev) => new Set(prev).add(laneId));
-      }
-    }
-  }, [laneStates]);
-
-  // Debounce ref for submission
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingRef = useRef<{ lane_id: string; value: number; cumulative: number; type: string } | null>(null);
+  const pendingRef = useRef<{
+    lane_id: string;
+    value: number;
+    cumulative: number;
+    type: string;
+  } | null>(null);
+
+  const getLaneState = useCallback(
+    (laneId: string) => {
+      const initialState = initialLaneStates[laneId];
+      const realtimeState = laneStates[laneId];
+      const optimisticState = optimisticLaneStates[laneId];
+      const realtimeTimestamp = realtimeState
+        ? new Date(realtimeState.last_updated_at).getTime()
+        : 0;
+      const optimisticTimestamp = optimisticState?.updatedAt ?? 0;
+
+      if (optimisticState && optimisticTimestamp >= realtimeTimestamp) {
+        return {
+          cumulative:
+            optimisticState.cumulative ??
+            realtimeState?.cumulative ??
+            initialState?.cumulative ??
+            0,
+          isFinished:
+            optimisticState.isFinished ??
+            realtimeState?.is_finished ??
+            initialState?.is_finished ??
+            false,
+        };
+      }
+
+      return {
+        cumulative: realtimeState?.cumulative ?? initialState?.cumulative ?? 0,
+        isFinished: realtimeState?.is_finished ?? initialState?.is_finished ?? false,
+      };
+    },
+    [initialLaneStates, laneStates, optimisticLaneStates]
+  );
 
   const flushPending = useCallback(async () => {
     const pending = pendingRef.current;
@@ -110,36 +136,40 @@ export function ScoringInterface({
 
   const handleScore = useCallback(
     (laneId: string, delta: number) => {
-      if (finishedLanes.has(laneId)) return;
+      const currentLaneState = getLaneState(laneId);
+      if (currentLaneState.isFinished) return;
 
-      setLocalCumulatives((prev) => {
-        const newVal = Math.max(0, (prev[laneId] ?? 0) + delta);
+      const newValue = Math.max(0, currentLaneState.cumulative + delta);
 
-        // Set pending update
-        pendingRef.current = {
-          lane_id: laneId,
-          value: delta,
-          cumulative: newVal,
-          type: metric,
-        };
+      setOptimisticLaneStates((prev) => ({
+        ...prev,
+        [laneId]: {
+          ...prev[laneId],
+          cumulative: newValue,
+          updatedAt: Date.now(),
+        },
+      }));
 
-        // Debounce 300ms
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-          flushPending();
-        }, 300);
+      pendingRef.current = {
+        lane_id: laneId,
+        value: delta,
+        cumulative: newValue,
+        type: metric,
+      };
 
-        return { ...prev, [laneId]: newVal };
-      });
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        flushPending();
+      }, 300);
     },
-    [metric, finishedLanes, flushPending]
+    [flushPending, getLaneState, metric]
   );
 
   const handleFinish = useCallback(
     async (laneId: string) => {
-      if (finishedLanes.has(laneId)) return;
+      const currentLaneState = getLaneState(laneId);
+      if (currentLaneState.isFinished) return;
 
-      // Flush any pending update first
       if (debounceRef.current) clearTimeout(debounceRef.current);
       await flushPending();
 
@@ -147,14 +177,21 @@ export function ScoringInterface({
       if ("error" in result) {
         toast.error("Error: " + result.error);
       } else {
-        setFinishedLanes((prev) => new Set(prev).add(laneId));
+        setOptimisticLaneStates((prev) => ({
+          ...prev,
+          [laneId]: {
+            ...prev[laneId],
+            cumulative: currentLaneState.cumulative,
+            isFinished: true,
+            updatedAt: Date.now(),
+          },
+        }));
         toast.success("Calle finalizada");
       }
     },
-    [heatId, finishedLanes, flushPending]
+    [flushPending, getLaneState, heatId]
   );
 
-  // Timer display
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (heatStatus !== "active" || !heatStartedAt) return;
@@ -165,13 +202,18 @@ export function ScoringInterface({
     return () => clearInterval(interval);
   }, [heatStatus, heatStartedAt]);
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
+    const minutes = Math.floor(secs / 60);
+    const seconds = secs % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
   };
 
-  // Lane selector view
   if (!selectedLane) {
     return (
       <div className="space-y-4">
@@ -180,7 +222,9 @@ export function ScoringInterface({
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-lg font-bold">{workoutName} - Heat {heatNumber}</h1>
+            <h1 className="text-lg font-bold">
+              {workoutName} - Heat {heatNumber}
+            </h1>
             <p className="text-xs text-muted-foreground">{categoryName}</p>
           </div>
         </div>
@@ -190,11 +234,17 @@ export function ScoringInterface({
             <button
               key={lane.id}
               onClick={() => setSelectedLane(lane)}
-              className="p-6 rounded-xl bg-card border-2 border-border hover:border-brand-green/60 transition-colors active:scale-[0.97] text-center"
+              className="rounded-xl border-2 border-border bg-card p-6 text-center transition-colors active:scale-[0.97] hover:border-brand-green/60"
             >
-              <p className="text-3xl font-black text-brand-green">{lane.lane_number}</p>
-              <p className="font-bold text-foreground mt-1">{lane.team?.name ?? "---"}</p>
-              <p className="text-xs text-muted-foreground">{lane.team?.box_name ?? ""}</p>
+              <p className="text-3xl font-black text-brand-green">
+                {lane.lane_number}
+              </p>
+              <p className="mt-1 font-bold text-foreground">
+                {lane.team?.name ?? "---"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {lane.team?.box_name ?? ""}
+              </p>
             </button>
           ))}
         </div>
@@ -202,12 +252,12 @@ export function ScoringInterface({
     );
   }
 
-  const isFinished = finishedLanes.has(selectedLane.id);
-  const currentScore = localCumulatives[selectedLane.id] ?? 0;
+  const selectedLaneState = getLaneState(selectedLane.id);
+  const isFinished = selectedLaneState.isFinished;
+  const currentScore = selectedLaneState.cumulative;
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)]">
-      {/* Header */}
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex items-center justify-between py-2">
         <div className="flex items-center gap-2">
           <button onClick={() => setSelectedLane(null)} className="p-2 -ml-2">
@@ -222,16 +272,16 @@ export function ScoringInterface({
         </div>
         <div className="flex items-center gap-2">
           {isConnected ? (
-            <Badge className="bg-brand-green/20 text-brand-green border-brand-green/30 text-xs">
+            <Badge className="border-brand-green/30 bg-brand-green/20 text-xs text-brand-green">
               Conectado
             </Badge>
           ) : (
-            <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30 text-xs">
+            <Badge className="border-yellow-500/30 bg-yellow-500/20 text-xs text-yellow-500">
               Reconectando...
             </Badge>
           )}
           {heatStatus === "active" && (
-            <Badge className="bg-red-500/20 text-red-400 border-red-500/30 animate-pulse-live">
+            <Badge className="border-red-500/30 bg-red-500/20 text-xs text-red-400 animate-pulse-live">
               <Radio size={10} className="mr-1" />
               LIVE
             </Badge>
@@ -239,90 +289,91 @@ export function ScoringInterface({
         </div>
       </div>
 
-      {/* Timer */}
       {heatStatus === "active" && heatStartedAt && (
-        <div className="text-center py-2">
-          <p className={`font-mono text-2xl font-bold ${timeCap && elapsed >= timeCap ? "text-red-400" : "text-brand-green"}`}>
+        <div className="py-2 text-center">
+          <p
+            className={`font-mono text-2xl font-bold ${
+              timeCap && elapsed >= timeCap ? "text-red-400" : "text-brand-green"
+            }`}
+          >
             {formatTime(elapsed)}
             {timeCap ? ` / ${formatTime(timeCap)}` : ""}
           </p>
         </div>
       )}
 
-      {/* Score display */}
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex flex-1 flex-col items-center justify-center">
         {isFinished ? (
-          <div className="text-center space-y-3">
+          <div className="space-y-3 text-center">
             <Flag size={48} className="mx-auto text-brand-green" />
-            <p className="text-6xl font-black text-brand-green tabular-nums">
+            <p className="text-6xl font-black tabular-nums text-brand-green">
               {currentScore}
             </p>
             <p className="text-muted-foreground">Finalizado</p>
           </div>
         ) : (
           <>
-            <p className="text-[8rem] leading-none font-black text-foreground tabular-nums animate-score-pop" key={currentScore}>
+            <p
+              className="animate-score-pop text-7xl font-black leading-none tabular-nums text-foreground sm:text-[8rem]"
+              key={currentScore}
+            >
               {currentScore}
             </p>
-            <p className="text-muted-foreground text-sm mt-2 uppercase tracking-wider">
+            <p className="mt-2 text-sm uppercase tracking-wider text-muted-foreground">
               {metricLabels[metric]}
             </p>
           </>
         )}
       </div>
 
-      {/* Controls */}
       {!isFinished && (
         <div className="space-y-3 pb-4">
-          {/* Metric selector */}
           <div className="flex justify-center gap-2">
-            {(Object.keys(metricLabels) as MetricType[]).map((m) => (
+            {(Object.keys(metricLabels) as MetricType[]).map((metricOption) => (
               <button
-                key={m}
-                onClick={() => setMetric(m)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors ${
-                  metric === m
+                key={metricOption}
+                onClick={() => setMetric(metricOption)}
+                className={`rounded-lg px-4 py-2 text-xs font-bold uppercase transition-colors ${
+                  metric === metricOption
                     ? "bg-brand-green text-black"
                     : "bg-muted/50 text-muted-foreground"
                 }`}
               >
-                {metricLabels[m]}
+                {metricLabels[metricOption]}
               </button>
             ))}
           </div>
 
-          {/* Score buttons */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3">
             <button
               onClick={() => handleScore(selectedLane.id, -5)}
-              className="h-16 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-lg active:scale-95 transition-transform flex items-center justify-center"
+              className="flex h-16 min-h-[3.5rem] items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 text-lg font-bold text-red-400 transition-transform active:scale-95"
             >
               <Minus size={16} className="mr-1" />5
             </button>
             <button
               onClick={() => handleScore(selectedLane.id, -1)}
-              className="h-16 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-lg active:scale-95 transition-transform flex items-center justify-center"
+              className="flex h-16 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 text-lg font-bold text-red-400 transition-transform active:scale-95"
             >
               <Minus size={16} className="mr-1" />1
             </button>
             <button
               onClick={() => handleScore(selectedLane.id, 1)}
-              className="h-16 rounded-xl bg-brand-green/10 border border-brand-green/30 text-brand-green font-bold text-lg active:scale-95 transition-transform flex items-center justify-center"
+              className="flex h-16 items-center justify-center rounded-xl border border-brand-green/30 bg-brand-green/10 text-lg font-bold text-brand-green transition-transform active:scale-95"
             >
               <Plus size={16} className="mr-1" />1
             </button>
             <button
               onClick={() => handleScore(selectedLane.id, 5)}
-              className="h-16 rounded-xl bg-brand-green/10 border border-brand-green/30 text-brand-green font-bold text-lg active:scale-95 transition-transform flex items-center justify-center"
+              className="flex h-16 items-center justify-center rounded-xl border border-brand-green/30 bg-brand-green/10 text-lg font-bold text-brand-green transition-transform active:scale-95"
             >
               <Plus size={16} className="mr-1" />5
             </button>
           </div>
 
-          {/* Finish button */}
           <button
             onClick={() => handleFinish(selectedLane.id)}
-            className="w-full h-14 rounded-xl bg-brand-green text-black font-bold text-lg active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
+            className="flex h-14 min-h-[3.5rem] w-full items-center justify-center gap-2 rounded-xl bg-brand-green text-lg font-bold text-black transition-transform active:scale-[0.97]"
           >
             <Flag size={20} />
             Finalizar Calle
