@@ -5,6 +5,7 @@ import {
   Handshake,
   HelpCircle,
   Home,
+  Images,
   Radio,
   Trophy,
 } from "lucide-react";
@@ -59,6 +60,12 @@ export const publicSecondaryNav: PublicNavItem[] = [
     icon: Handshake,
   },
   {
+    href: "/galeria",
+    label: "Galeria",
+    description: "Fotos oficiales para ver, descargar o comprar desde la web.",
+    icon: Images,
+  },
+  {
     href: "/faq",
     label: "FAQ",
     description: "Preguntas frecuentes y dudas practicas.",
@@ -84,6 +91,12 @@ export const publicOverlayUtilityLinks = [
   { href: "/horarios", label: "Horarios" },
   { href: "/clasificacion", label: "Ranking" },
   { href: "/wods", label: "WODs" },
+  { href: "/galeria", label: "Galeria" },
+] as const;
+
+export const publicRegistrationLinks = [
+  { href: "/registro/voluntarios", label: "Registro voluntarios" },
+  { href: "/registro/equipos", label: "Registro equipos" },
 ] as const;
 
 export function isPublicNavActive(pathname: string, href: string) {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight, ListChecks } from "lucide-react";
+import { EditorialHero } from "@/components/shared/editorial-hero";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,46 +34,48 @@ export default async function WodsPage() {
 
   return (
     <div className="min-h-screen">
-      <section className="relative overflow-hidden border-b border-white/6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(120,199,167,0.11),_transparent_42%),linear-gradient(180deg,rgba(14,16,14,1),rgba(13,15,13,1))]" />
-        <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-10 sm:pb-14 sm:pt-14">
-          <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
-            <div className="max-w-3xl">
-              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-brand-green/74">
-                WODs
-              </p>
-              <h1 className="mt-4 text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl">
-                WODs, standards y formato de score.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-white/72">
-                Consulta cada prueba de la competicion con su time cap, logica de
-                puntuacion y acceso al detalle completo cuando se publique.
-              </p>
-            </div>
+      <EditorialHero
+        imageSrc="/images/editorial/wods-hero.webp"
+        imageAlt="Atleta levantando una barra por encima de la cabeza durante una sesion de entrenamiento exigente"
+        preload
+        imageClassName="object-[center_32%]"
+      >
+        <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
+          <div className="max-w-3xl">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-brand-green/80">
+              WODs
+            </p>
+            <h1 className="mt-4 text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl">
+              WODs, standards y formato de score.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-white/76">
+              Consulta cada prueba de la competicion con su time cap, logica de
+              puntuacion y acceso al detalle completo cuando se publique.
+            </p>
+          </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[1.7rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
-                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
-                  WODs visibles
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-white">{visibleWorkouts.length}</p>
-              </div>
-              <div className="rounded-[1.7rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
-                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
-                  Con time cap
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-white">{timedWorkouts}</p>
-              </div>
-              <div className="rounded-[1.7rem] bg-white/[0.03] px-4 py-5 ring-1 ring-white/7">
-                <p className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
-                  Score alto gana
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-white">{heavierIsBetterCount}</p>
-              </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.7rem] border border-white/10 bg-black/28 px-4 py-5 backdrop-blur-sm">
+              <p className="text-[0.68rem] uppercase tracking-[0.22em] text-white/54">
+                WODs visibles
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-white">{visibleWorkouts.length}</p>
+            </div>
+            <div className="rounded-[1.7rem] border border-white/10 bg-black/28 px-4 py-5 backdrop-blur-sm">
+              <p className="text-[0.68rem] uppercase tracking-[0.22em] text-white/54">
+                Con time cap
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-white">{timedWorkouts}</p>
+            </div>
+            <div className="rounded-[1.7rem] border border-white/10 bg-black/28 px-4 py-5 backdrop-blur-sm">
+              <p className="text-[0.68rem] uppercase tracking-[0.22em] text-white/54">
+                Score alto gana
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-white">{heavierIsBetterCount}</p>
             </div>
           </div>
         </div>
-      </section>
+      </EditorialHero>
 
       <section className="px-4 py-10 sm:py-12">
         <div className="mx-auto max-w-7xl space-y-4">

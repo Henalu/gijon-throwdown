@@ -105,7 +105,7 @@ export function PatrocinadoresClient({
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-muted-foreground">
           {sponsors.length} patrocinadores
         </span>
@@ -115,79 +115,163 @@ export function PatrocinadoresClient({
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Tier</TableHead>
-            <TableHead>Logo URL</TableHead>
-            <TableHead>Web</TableHead>
-            <TableHead>Activo</TableHead>
-            <TableHead>Orden</TableHead>
-            <TableHead className="w-[100px]">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sponsors.length === 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={7}
-                className="text-center text-muted-foreground"
-              >
-                No hay patrocinadores
-              </TableCell>
-            </TableRow>
-          )}
-          {sponsors.map((s) => (
-            <TableRow key={s.id}>
-              <TableCell className="font-medium">{s.name}</TableCell>
-              <TableCell>
-                <Badge className={TIER_STYLES[s.tier]}>
-                  {s.tier}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                {s.logo_url}
-              </TableCell>
-              <TableCell className="text-muted-foreground max-w-[150px] truncate">
-                {s.website_url ?? "-"}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant={s.is_active ? "default" : "outline"}
-                  className={
-                    s.is_active
-                      ? "bg-green-500/10 text-green-500 border-green-500/20"
-                      : ""
-                  }
-                >
-                  {s.is_active ? "Si" : "No"}
-                </Badge>
-              </TableCell>
-              <TableCell>{s.sort_order}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
+      <div className="space-y-3 md:hidden">
+        {sponsors.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
+            No hay patrocinadores
+          </div>
+        ) : (
+          sponsors.map((sponsor) => (
+            <div
+              key={sponsor.id}
+              className="rounded-2xl border border-border/60 bg-card/80 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-2">
+                  <p className="text-base font-semibold text-foreground break-words">
+                    {sponsor.name}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className={TIER_STYLES[sponsor.tier]}>
+                      {sponsor.tier}
+                    </Badge>
+                    <Badge
+                      variant={sponsor.is_active ? "default" : "outline"}
+                      className={
+                        sponsor.is_active
+                          ? "bg-green-500/10 text-green-500 border-green-500/20"
+                          : ""
+                      }
+                    >
+                      {sponsor.is_active ? "Si" : "No"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    onClick={() => openEdit(s)}
+                    onClick={() => openEdit(sponsor)}
                   >
                     <Pencil />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    onClick={() => handleDelete(s.id)}
+                    onClick={() => handleDelete(sponsor.id)}
                     disabled={isPending}
                   >
                     <Trash2 />
                   </Button>
                 </div>
-              </TableCell>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div className="rounded-xl border border-border/50 bg-background/60 px-3 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Logo URL
+                  </p>
+                  <p className="mt-1 text-sm text-foreground break-all">
+                    {sponsor.logo_url}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-background/60 px-3 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Web
+                  </p>
+                  <p className="mt-1 text-sm text-foreground break-all">
+                    {sponsor.website_url ?? "-"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-background/60 px-3 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Orden
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {sponsor.sort_order}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Tier</TableHead>
+              <TableHead>Logo URL</TableHead>
+              <TableHead>Web</TableHead>
+              <TableHead>Activo</TableHead>
+              <TableHead>Orden</TableHead>
+              <TableHead className="w-[100px]">Acciones</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {sponsors.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="text-center text-muted-foreground"
+                >
+                  No hay patrocinadores
+                </TableCell>
+              </TableRow>
+            )}
+            {sponsors.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell className="font-medium">{s.name}</TableCell>
+                <TableCell>
+                  <Badge className={TIER_STYLES[s.tier]}>
+                    {s.tier}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                  {s.logo_url}
+                </TableCell>
+                <TableCell className="text-muted-foreground max-w-[150px] truncate">
+                  {s.website_url ?? "-"}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={s.is_active ? "default" : "outline"}
+                    className={
+                      s.is_active
+                        ? "bg-green-500/10 text-green-500 border-green-500/20"
+                        : ""
+                    }
+                  >
+                    {s.is_active ? "Si" : "No"}
+                  </Badge>
+                </TableCell>
+                <TableCell>{s.sort_order}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => openEdit(s)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => handleDelete(s.id)}
+                      disabled={isPending}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -277,7 +361,7 @@ function SponsorForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="sponsor-sort">Orden</Label>
           <Input
@@ -287,7 +371,7 @@ function SponsorForm({
             defaultValue={sponsor?.sort_order ?? 0}
           />
         </div>
-        <div className="flex items-center gap-3 pt-6">
+        <div className="flex items-center gap-3 pt-0 sm:pt-6">
           <Switch
             checked={isActive}
             onCheckedChange={setIsActive}

@@ -118,58 +118,38 @@ export function WodsClient({ workouts }: { workouts: Workout[] }) {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-muted-foreground">
           {workouts.length} workouts
         </span>
-        <Button onClick={openCreate} size="sm">
+        <Button onClick={openCreate} size="sm" className="w-full sm:w-auto">
           <Plus data-icon="inline-start" />
           Nuevo WOD
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Score</TableHead>
-            <TableHead>Time Cap</TableHead>
-            <TableHead>Visible</TableHead>
-            <TableHead className="w-[100px]">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {workouts.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground">
-                No hay workouts
-              </TableCell>
-            </TableRow>
-          )}
-          {workouts.map((wod) => (
-            <TableRow key={wod.id}>
-              <TableCell className="font-medium">{wod.name}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{wod.wod_type}</Badge>
-              </TableCell>
-              <TableCell>
-                <Badge variant="secondary">{wod.score_type}</Badge>
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {formatTimeCap(wod.time_cap_seconds)}
-              </TableCell>
-              <TableCell>
-                <Switch
-                  checked={wod.is_visible}
-                  onCheckedChange={() =>
-                    handleToggleVisibility(wod.id, wod.is_visible)
-                  }
-                  size="sm"
-                />
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
+      <div className="space-y-3 md:hidden">
+        {workouts.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
+            No hay workouts
+          </div>
+        ) : (
+          workouts.map((wod) => (
+            <div
+              key={wod.id}
+              className="rounded-2xl border border-border/60 bg-card/80 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-2">
+                  <p className="text-base font-semibold text-foreground break-words">
+                    {wod.name}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{wod.wod_type}</Badge>
+                    <Badge variant="secondary">{wod.score_type}</Badge>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon-xs"
@@ -186,11 +166,105 @@ export function WodsClient({ workouts }: { workouts: Workout[] }) {
                     <Trash2 />
                   </Button>
                 </div>
-              </TableCell>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-xl border border-border/50 bg-background/60 px-3 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Time cap
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {formatTimeCap(wod.time_cap_seconds)}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 rounded-xl border border-border/50 bg-background/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Visible
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-foreground">
+                      {wod.is_visible ? "Publicado" : "Oculto"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={wod.is_visible}
+                    onCheckedChange={() =>
+                      handleToggleVisibility(wod.id, wod.is_visible)
+                    }
+                    size="sm"
+                  />
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Score</TableHead>
+              <TableHead>Time Cap</TableHead>
+              <TableHead>Visible</TableHead>
+              <TableHead className="w-[100px]">Acciones</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {workouts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  No hay workouts
+                </TableCell>
+              </TableRow>
+            )}
+            {workouts.map((wod) => (
+              <TableRow key={wod.id}>
+                <TableCell className="font-medium">{wod.name}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{wod.wod_type}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{wod.score_type}</Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatTimeCap(wod.time_cap_seconds)}
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={wod.is_visible}
+                    onCheckedChange={() =>
+                      handleToggleVisibility(wod.id, wod.is_visible)
+                    }
+                    size="sm"
+                  />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => openEdit(wod)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => handleDelete(wod.id)}
+                      disabled={isPending}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -252,7 +326,7 @@ function WodForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>Tipo de WOD</Label>
           <Select value={wodType} onValueChange={(v) => { if (v) setWodType(v); }}>
@@ -317,7 +391,7 @@ function WodForm({
         />
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
         <div className="flex items-center gap-2">
           <Switch checked={isVisible} onCheckedChange={setIsVisible} size="sm" />
           <Label>Visible</Label>

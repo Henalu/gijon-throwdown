@@ -35,7 +35,8 @@ export default async function ClasificacionPage() {
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-white/72">
               Aqui se consolidan los resultados validados y la posicion oficial
-              de cada equipo dentro de su categoria.
+              de cada equipo dentro de su categoria, en un formato de 4
+              personas con 1 chica y 3 chicos por equipo.
             </p>
           </div>
         </div>

@@ -44,6 +44,27 @@ export async function updateHeatStatus(
   }
 
   revalidatePath("/admin/heats");
+  revalidatePath("/voluntario");
+  return { success: true };
+}
+
+export async function updateHeatLiveEntry(
+  id: string,
+  isLiveEntryEnabled: boolean,
+): Promise<{ error: string } | { success: true }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("heats")
+    .update({ is_live_entry_enabled: isLiveEntryEnabled })
+    .eq("id", id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/admin/heats");
+  revalidatePath("/voluntario");
   return { success: true };
 }
 
@@ -59,6 +80,7 @@ export async function deleteHeat(
   }
 
   revalidatePath("/admin/heats");
+  revalidatePath("/voluntario");
   return { success: true };
 }
 
@@ -78,6 +100,7 @@ export async function assignLane(
   }
 
   revalidatePath("/admin/heats");
+  revalidatePath("/voluntario");
   return { success: true };
 }
 

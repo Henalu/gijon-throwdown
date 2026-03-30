@@ -2,10 +2,56 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { canValidateScoresProfile, isAdminLikeRole } from "@/lib/auth/permissions";
+import { getCurrentSessionProfile } from "@/lib/auth/session";
+
+function revalidateScorePaths(heatId?: string) {
+  revalidatePath("/admin/puntuaciones");
+  revalidatePath("/admin/validacion");
+
+  if (heatId) {
+    revalidatePath(`/admin/validacion/${heatId}`);
+  }
+
+  revalidatePath("/clasificacion");
+}
+
+async function requireAdminLikeActor() {
+  const session = await getCurrentSessionProfile();
+
+  if (!session.user || !session.profile) {
+    return { error: "No autenticado" as const };
+  }
+
+  if (!session.profile.is_active || !isAdminLikeRole(session.profile.role)) {
+    return { error: "No tienes permisos para gestionar puntuaciones" as const };
+  }
+
+  return session;
+}
+
+async function requireValidationActor() {
+  const session = await getCurrentSessionProfile();
+
+  if (!session.user || !session.profile) {
+    return { error: "No autenticado" as const };
+  }
+
+  if (!canValidateScoresProfile(session.profile)) {
+    return { error: "No tienes permisos para validar resultados" as const };
+  }
+
+  return session;
+}
 
 export async function finalizeHeat(
   heatId: string
 ): Promise<{ error: string } | { success: true }> {
+  const actor = await requireAdminLikeActor();
+  if ("error" in actor) {
+    return actor;
+  }
+
   const supabase = await createClient();
 
   // Fetch heat with its workout and lanes (with teams)
@@ -19,6 +65,16 @@ export async function finalizeHeat(
 
   if (heatError || !heat) {
     return { error: heatError?.message ?? "Heat no encontrado" };
+  }
+
+  const { data: existingScores } = await supabase
+    .from("scores")
+    .select("id")
+    .eq("heat_id", heatId)
+    .limit(1);
+
+  if (existingScores && existingScores.length > 0) {
+    return { error: "Este heat ya tiene un borrador de scores generado" };
   }
 
   const workout = heat.workout;
@@ -41,6 +97,7 @@ export async function finalizeHeat(
     reps: number | null;
     is_cap: boolean;
     is_published: boolean;
+    submitted_by: string;
   }[] = [];
 
   for (const lane of lanes) {
@@ -90,6 +147,7 @@ export async function finalizeHeat(
       reps,
       is_cap,
       is_published: false,
+      submitted_by: actor.user.id,
     });
   }
 
@@ -99,7 +157,7 @@ export async function finalizeHeat(
     return { error: insertError.message };
   }
 
-  revalidatePath("/admin/puntuaciones");
+  revalidateScorePaths(heatId);
   return { success: true };
 }
 
@@ -107,16 +165,12 @@ export async function updateScore(
   scoreId: string,
   formData: FormData
 ): Promise<{ error: string } | { success: true }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: "No autenticado" };
+  const actor = await requireValidationActor();
+  if ("error" in actor) {
+    return actor;
   }
+
+  const supabase = await createClient();
 
   const timeMsRaw = formData.get("time_ms");
   const repsRaw = formData.get("reps");
@@ -124,6 +178,16 @@ export async function updateScore(
   const roundsRaw = formData.get("rounds");
   const remainingRepsRaw = formData.get("remaining_reps");
   const penaltySecondsRaw = formData.get("penalty_seconds");
+
+  const { data: existingScore, error: scoreError } = await supabase
+    .from("scores")
+    .select("heat_id")
+    .eq("id", scoreId)
+    .single();
+
+  if (scoreError || !existingScore) {
+    return { error: scoreError?.message ?? "Score no encontrado" };
+  }
 
   const { error } = await supabase
     .from("scores")
@@ -137,7 +201,10 @@ export async function updateScore(
       is_cap: formData.get("is_cap") === "true",
       penalty_seconds: penaltySecondsRaw ? Number(penaltySecondsRaw) : 0,
       notes: (formData.get("notes") as string) || null,
-      verified_by: user.id,
+      verified_by: null,
+      verified_at: null,
+      is_published: false,
+      points: null,
     })
     .eq("id", scoreId);
 
@@ -145,15 +212,79 @@ export async function updateScore(
     return { error: error.message };
   }
 
-  revalidatePath("/admin/puntuaciones");
-  revalidatePath("/clasificacion");
+  revalidateScorePaths(existingScore.heat_id ?? undefined);
+  return { success: true };
+}
+
+export async function validateHeat(
+  heatId: string
+): Promise<{ error: string } | { success: true }> {
+  const actor = await requireValidationActor();
+  if ("error" in actor) {
+    return actor;
+  }
+
+  const supabase = await createClient();
+
+  const { data: scores, error: scoresError } = await supabase
+    .from("scores")
+    .select("id")
+    .eq("heat_id", heatId);
+
+  if (scoresError) {
+    return { error: scoresError.message };
+  }
+
+  if (!scores || scores.length === 0) {
+    return { error: "No hay scores para validar en este heat" };
+  }
+
+  const { error } = await supabase
+    .from("scores")
+    .update({
+      verified_by: actor.user.id,
+      verified_at: new Date().toISOString(),
+    })
+    .eq("heat_id", heatId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidateScorePaths(heatId);
   return { success: true };
 }
 
 export async function publishScores(
   heatId: string
 ): Promise<{ error: string } | { success: true }> {
+  const actor = await requireValidationActor();
+  if ("error" in actor) {
+    return actor;
+  }
+
   const supabase = await createClient();
+
+  const { data: scores, error: scoresError } = await supabase
+    .from("scores")
+    .select("id, verified_at, verified_by")
+    .eq("heat_id", heatId);
+
+  if (scoresError) {
+    return { error: scoresError.message };
+  }
+
+  if (!scores || scores.length === 0) {
+    return { error: "No hay scores para publicar" };
+  }
+
+  const hasPendingValidation = scores.some(
+    (score) => !score.verified_at || !score.verified_by
+  );
+
+  if (hasPendingValidation) {
+    return { error: "No puedes publicar un heat sin validar todos sus scores" };
+  }
 
   const { error } = await supabase
     .from("scores")
@@ -164,14 +295,18 @@ export async function publishScores(
     return { error: error.message };
   }
 
-  revalidatePath("/admin/puntuaciones");
-  revalidatePath("/clasificacion");
+  revalidateScorePaths(heatId);
   return { success: true };
 }
 
 export async function unpublishScores(
   heatId: string
 ): Promise<{ error: string } | { success: true }> {
+  const actor = await requireValidationActor();
+  if ("error" in actor) {
+    return actor;
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -183,14 +318,18 @@ export async function unpublishScores(
     return { error: error.message };
   }
 
-  revalidatePath("/admin/puntuaciones");
-  revalidatePath("/clasificacion");
+  revalidateScorePaths(heatId);
   return { success: true };
 }
 
 export async function calculatePoints(
   workoutId: string
 ): Promise<{ error: string } | { success: true }> {
+  const actor = await requireValidationActor();
+  if ("error" in actor) {
+    return actor;
+  }
+
   const supabase = await createClient();
 
   // Fetch the workout to know ranking direction
@@ -289,7 +428,6 @@ export async function calculatePoints(
     }
   }
 
-  revalidatePath("/admin/puntuaciones");
-  revalidatePath("/clasificacion");
+  revalidateScorePaths();
   return { success: true };
 }

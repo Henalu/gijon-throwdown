@@ -80,7 +80,7 @@ export function CategoriasClient({
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-muted-foreground">
           {categories.length} categorias
         </span>
@@ -90,38 +90,32 @@ export function CategoriasClient({
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Slug</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Tam. equipo</TableHead>
-            <TableHead>Orden</TableHead>
-            <TableHead className="w-[100px]">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {categories.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground">
-                No hay categorias
-              </TableCell>
-            </TableRow>
-          )}
-          {categories.map((cat) => (
-            <TableRow key={cat.id}>
-              <TableCell className="font-medium">{cat.name}</TableCell>
-              <TableCell className="text-muted-foreground">{cat.slug}</TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {cat.is_team ? "Equipo" : "Individual"}
-                </Badge>
-              </TableCell>
-              <TableCell>{cat.team_size}</TableCell>
-              <TableCell>{cat.sort_order}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
+      <div className="space-y-3 md:hidden">
+        {categories.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
+            No hay categorias
+          </div>
+        ) : (
+          categories.map((cat) => (
+            <div
+              key={cat.id}
+              className="rounded-2xl border border-border/60 bg-card/80 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-2">
+                  <p className="text-base font-semibold text-foreground break-words">
+                    {cat.name}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">
+                      {cat.is_team ? "Equipo" : "Individual"}
+                    </Badge>
+                    <Badge variant="outline" className="text-muted-foreground">
+                      {cat.slug}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon-xs"
@@ -138,11 +132,86 @@ export function CategoriasClient({
                     <Trash2 />
                   </Button>
                 </div>
-              </TableCell>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-border/50 bg-background/60 px-3 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Tam. equipo
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {cat.team_size}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-background/60 px-3 py-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Orden
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {cat.sort_order}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Slug</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Tam. equipo</TableHead>
+              <TableHead>Orden</TableHead>
+              <TableHead className="w-[100px]">Acciones</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {categories.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  No hay categorias
+                </TableCell>
+              </TableRow>
+            )}
+            {categories.map((cat) => (
+              <TableRow key={cat.id}>
+                <TableCell className="font-medium">{cat.name}</TableCell>
+                <TableCell className="text-muted-foreground">{cat.slug}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {cat.is_team ? "Equipo" : "Individual"}
+                  </Badge>
+                </TableCell>
+                <TableCell>{cat.team_size}</TableCell>
+                <TableCell>{cat.sort_order}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => openEdit(cat)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => handleDelete(cat.id)}
+                      disabled={isPending}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -208,7 +277,7 @@ function CategoryForm({
         <input type="hidden" name="is_team" value={isTeam ? "true" : "false"} />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="cat-team-size">Tam. equipo</Label>
           <Input

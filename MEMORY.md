@@ -1,6 +1,6 @@
 # Memory
 
-Last updated: 2026-03-28
+Last updated: 2026-03-29
 
 ## Product Intent
 
@@ -27,27 +27,35 @@ Last updated: 2026-03-28
 ## Route Inventory
 
 - Public:
-  `/`, `/wods`, `/wods/[slug]`, `/categorias/[slug]`, `/horarios`, `/clasificacion`, `/directo`, `/patrocinadores`, `/faq`
+  `/`, `/cuenta`, `/registro/voluntarios`, `/registro/equipos`, `/wods`, `/wods/[slug]`, `/categorias/[slug]`, `/horarios`, `/clasificacion`, `/directo`, `/galeria`, `/galeria/[id]`, `/patrocinadores`, `/faq`, `/privacidad`, `/cookies`, `/bases-legales`, `/aviso-legal`
 - Admin:
-  `/admin`, `/admin/evento`, `/admin/categorias`, `/admin/equipos`, `/admin/wods`, `/admin/heats`, `/admin/puntuaciones`, `/admin/patrocinadores`, `/admin/voluntarios`, `/admin/streaming`
+  `/admin`, `/admin/evento`, `/admin/categorias`, `/admin/equipos`, `/admin/wods`, `/admin/heats`, `/admin/puntuaciones`, `/admin/validacion`, `/admin/validacion/[heatId]`, `/admin/usuarios`, `/admin/personas`, `/admin/patrocinadores`, `/admin/voluntarios`, `/admin/streaming`, `/admin/media`
 - Volunteer:
   `/voluntario`, `/voluntario/heat/[heatId]`
 - Live:
   `/live/[heatId]`, `/overlay/[heatId]`
 - Auth:
-  `/auth/login`, `/auth/callback`
+  `/auth/login`, `/auth/callback`, `/auth/setup`
 
 ## Domain Model
 
 Primary schema objects:
 
-- `profiles`: current auth profile table; today it only stores a binary `admin` / `volunteer` role model
+- `profiles`: auth profile table with `role`, `email`, `is_active`,
+  `person_id`, `is_judge`, `can_validate_scores`, `invited_at`, `setup_completed_at`
+- `people`: canonical person table reused across auth and athlete identity
+- `event_editions`: edition metadata while the UI still focuses on one active edition
+- `edition_participations`: continuity layer linking people to a role in a given edition
+- `volunteer_applications`: public volunteer requests with logistics data,
+  optional judge intent, and review state
+- `team_registrations`, `team_registration_members`: public team preinscriptions kept separate from confirmed competition entities
 - `event_config`: single event settings, branding, dates, FAQ, stream URL
 - `categories`, `teams`, `athletes`
 - `workouts`, `workout_stages`
 - `heats`, `lanes`
+- `heats.is_live_entry_enabled`: operational gate for live entry
 - `live_updates`: append-only realtime scoring stream
-- `scores`: finalized results
+- `scores`: official result layer with `verified_by`, `verified_at`, `is_published`
 - `sponsors`, `sponsor_slots`
 - `volunteer_assignments`
 - `stream_sessions`, `media`
@@ -58,12 +66,24 @@ Important SQL-side behavior:
 - `leaderboard` is a SQL view from `supabase/migrations/003_functions.sql`
 - realtime is enabled for `live_updates` and `heats`
 
-## Target People Registry Direction
+## People Registry Direction
 
-Recommended target, not implemented yet:
+Implemented foundation:
+
+- one active event edition in the main UI remains the current product shape
+- `people` now exists as canonical person layer reusable beyond a single auth account
+- `profiles.person_id` and `athletes.person_id` now link auth and athletic identity back to `people`
+- `event_editions` now exists and `event_config.active_edition_id` points to the active one
+- `teams.edition_id`, `athletes.edition_id`, and `edition_participations`
+  now provide a real continuity base under the current single-edition UI
+- admin can already convert:
+  `volunteer_applications -> people + profile`
+  and `team_registrations -> teams + people + athletes`
+
+Still target direction:
 
 - keep one active event edition in the main UI
-- but introduce a persistent people layer reusable across yearly editions
+- deepen edition history and athlete-facing continuity on top of the new participation layer
 - do not overload `profiles` with every future person/logistics/legal concern
 
 Recommended conceptual split:
@@ -71,9 +91,8 @@ Recommended conceptual split:
 - `people`: canonical person record reused over time
 - `profiles` or auth accounts: login/session/system role, optionally linked to `people`
 - `event_editions`: yearly edition metadata
-- `edition_participants` / `edition_roles`: who did what in a given edition
-- `team_registrations` and `team_memberships`: team creation and roster management
-- `volunteer_applications`: volunteer-specific logistics and application state
+- `edition_participations`: who did what in a given edition
+- `team_memberships`: team creation and roster management once preinscriptions convert into real entities
 - `consent_records` / retention metadata: privacy and legal traceability
 
 Important functional targets:
@@ -90,17 +109,19 @@ Important functional targets:
 
 ## Target Access Model
 
-Recommended target, not implemented yet:
+Implemented foundation:
 
-- `profiles.role` should evolve to `superadmin | admin | volunteer | athlete`
+- `profiles.role` now supports `superadmin | admin | volunteer | athlete`
+- `head_judge` capability is currently modeled as `profiles.can_validate_scores`
+- `profiles.is_judge` now marks volunteer/judge specialization while keeping
+  `profiles.role` as the global access source of truth
+- internal users can be invited by superadmin and complete `/auth/setup`
+
+Still missing on top of that foundation:
+
 - `head_judge` fits better as an explicit capability on admin-like users
   such as `can_validate_scores`, not necessarily as a separate global role
-- `superadmin` should be the only profile able to create users, change roles,
-  and manage global/system-level permissions
-- `admin` should own event operations, scoring configuration, team/athlete editing,
-  heat visibility, and score correction without owning role management
-- `volunteer` should be limited to mobile-first live data entry surfaces
-- `athlete` should remain read-only and public-consumption oriented
+- richer athlete surface, people registry, registration flows, and scoring-rules configuration
 
 Recommended permission architecture:
 
@@ -119,61 +140,107 @@ Recommended result lifecycle:
 ## Current App Behavior
 
 - Public home page loads event config, visible workouts, categories, and sponsors.
+- Public gallery now exists on `/galeria` and `/galeria/[id]` with signed previews,
+  optional signed downloads, and configurable purchase CTA per image.
+- Public shell now detects active session and adapts navbar and mobile overlay by role.
+- Desktop navbar now keeps the public navigation visible and moves internal
+  role-based shortcuts into a compact account dropdown to avoid overcrowding.
+- Desktop footer now avoids duplicating the main navigation and instead acts as
+  a legal/community area with internal legal pages and social access.
+- Public routes `/cuenta`, `/registro/voluntarios`, and `/registro/equipos` now exist.
+- Public team registration now treats athlete 1 as the contact responsible,
+  keeps the visible gender labels in Spanish (`Chico` / `Chica`),
+  and shows the selected category label instead of raw UUID values.
+- Public volunteer registration now also captures whether the applicant wants
+  to colaborar como juez, and converted/internal profiles surface that as
+  `Juez` / `Panel juez` in the shared UI.
+- `/cuenta` now shows real team/category/ranking context plus first participation history for linked athlete accounts.
+- Public heroes on `/`, `/directo`, and `/wods` now include a local editorial photo layer backed by `next/image`.
+- Home now extends that photo-led direction beyond the hero through editorial split sections,
+  so photography supports the page rhythm instead of appearing only once at the top.
+- Public direct page now prefers a live `stream_sessions` entry before falling
+  back to `event_config.stream_url`, and it surfaces recent public sessions as
+  replay/archive cards.
+- Admin dashboard on `/admin` is now a real operational hub:
+  it summarizes event status, live heats, pending validation, pending public
+  registrations, streaming/media state, and role-aware quick actions.
+- Protected internal surfaces now have their own mobile navigation layer:
+  `admin` and `voluntario` expose a mobile header + overlay menu so users can
+  move between internal areas and back to the public site without getting stuck.
 - WOD detail page reads `workout_stages`.
 - Leaderboard page reads directly from SQL view `leaderboard`.
-- Volunteer UI sends live updates through server actions and listens with Supabase realtime.
-- Admin panel can create/update/delete most event entities and finalize/publish/calculate scores.
-- Streaming is currently just a YouTube URL stored on `event_config`.
-- Volunteer home currently revolves around assigned heats plus any active heats; it does not yet implement the full mobile-first filtering flow requested for real event operations.
-- Public and athlete consumption still share the same unauthenticated surface; no dedicated athlete account experience exists yet.
+- Volunteer UI now checks heat operability before writing live updates and only exposes assigned/live-enabled heats.
+- Volunteer dashboard now adds category/search filtering and can match category, workout, heat label, and team names.
+- Admin panel can create/update/delete most event entities, enable/disable live entry per heat,
+  manage internal users as superadmin, route official score review through `/admin/validacion`,
+  review volunteer/team public submissions, convert them into real people/entities,
+  and inspect canonical people records through `/admin/personas`.
+- Admin can now also:
+  manage `athletes` inside `/admin/equipos`,
+  manage `workout_stages` inside `/admin/wods`,
+  manage `volunteer_assignments` inside `/admin/voluntarios`,
+  trigger athlete invites after team conversion,
+  manage public stream sessions in `/admin/streaming`,
+  and manage the event gallery in `/admin/media`.
+- Internal invited users complete onboarding in `/auth/setup` before entering protected surfaces.
+- Official flow is now:
+  draft from heat -> validator edits -> validator validates heat -> publish -> calculate points.
+- Public and athlete consumption now share an auth-aware shell, and athlete accounts can already surface real team/ranking context when linked.
+- Athlete invite and setup flow is now more athlete-aware:
+  invited athletes land more coherently in `/cuenta`,
+  and participation links are kept in sync when profiles are invited or activated.
+- Gallery assets now live in a private Supabase bucket (`event-media`) and the
+  app serves signed preview/download URLs from the server.
 
 ## Quality Snapshot
 
-Verified on 2026-03-28:
+Verified on 2026-03-29:
 
 - `npm run build`: OK
-- `npx tsc --noEmit`: OK
-- `npx eslint src`: OK
+- `npm run typecheck`: OK
+- `npm run lint:src`: OK
 - `npm run lint`: should no longer be polluted by `.claude/worktrees/**`
 
 ## Known Gaps
 
-- No admin CRUD for athletes.
-- No admin CRUD for workout stages.
-- No admin UI to assign volunteers to heats/lanes even though `volunteer_assignments` exists.
-- `stream_sessions` and `media` exist in DB but are not wired into app flows.
 - `sponsor_slots` exists in schema, but public rendering barely uses placement data.
+- Demo seed and default category data are still modeled as team-of-2,
+  while the current product and public registration flow are now team-of-4
+  with `1 woman + 3 men`.
+- Public team registration currently hardcodes that 4-person rule instead of
+  deriving it from category config, so category data can drift away from the form.
 - Event form updates core fields, but not the full event payload stored in schema.
+- Event admin still does not expose FAQ, cover/logo/media fields,
+  active-edition control, or the full location/navigation payload.
+- Media purchase is now product-visible through `purchase_url`, but real checkout
+  still depends on the external commerce URL/provider chosen by the organization.
 - Public sponsor pages currently render names/tier emphasis more than actual logos.
-- `public/` still contains only default Next starter assets.
-- Auth/permissions are still in a first-pass state:
-  only `admin` and `volunteer` exist in schema, middleware, and UI assumptions.
-- There is no superadmin-only user/role management flow.
-- There is no explicit validator/head-judge dashboard to compare provisional live data against official results.
-- The scoring model exposes `verified_by` and `is_published`, but the business workflow between live capture, official review, and leaderboard consolidation is still underdefined in code.
+- First superadmin promotion still needs a manual rollout step in production.
 - There is no configurable scoring-rules module for points tables, tie-breakers, or workout-specific ranking rules.
-- WOD activation and volunteer input restrictions need to become more explicit so many simultaneous volunteers can operate safely.
-- There is no persistent person registry distinct from auth `profiles`.
-- There is no edition/history model; schema is still single-event.
-- Volunteer registration does not exist.
-- Team-led athlete registration does not exist.
-- `athletes` lacks email, gender, shirt size, consent, invitation state, and reusable identity fields.
-- There is no athlete account/profile experience with ranking/history continuity.
-- There are no invitation/confirmation email flows.
-- Legal/data-protection work is absent from the app:
-  no privacy policy surface, no consent capture, no retention policy implementation.
+- Public registration still starts as pending submission capture, then requires admin conversion.
+- The continuity model now exists, but multi-edition management is still not surfaced as a real admin product area.
+- Athlete invitation now exists as an admin-triggered follow-up step after team conversion, and setup copy is more athlete-aware, but the athlete-facing lifecycle can still be polished further.
+- `athletes` stays intentionally lean; reusable identity and logistics now live in `people`.
+- `/cuenta` now exposes first participation history, but it is still not a fully rich athlete profile.
+- There are no public-facing invitation/confirmation email flows for athlete registration.
+- Legal/data-protection work is still partial:
+  public legal pages now exist, but there is still no consent capture flow or
+  retention policy implementation inside the product.
 - There is no visible WodBuster bridge in the current UI.
 
 ## Codebase Quirks
 
-- `src/middleware.ts` works, but Next 16 marks middleware as deprecated in favor of `proxy.ts`.
-- `eslint.config.mjs` ignores `.next/**` but not `.claude/worktrees/**`, so full-project lint is noisy.
+- `src/proxy.ts` now owns route protection; do not reintroduce `middleware.ts`.
+- `eslint.config.mjs` already ignores `.claude/worktrees/**`; prefer `npm run lint:src` cuando quieras una pasada rapida y centrada en la app principal.
 - `src/app/(admin)/admin/patrocinadores/sponsors-client.tsx` appears to be an older duplicate and is not imported by the current page.
 - Most admin writes rely on Supabase RLS instead of explicit manual role checks inside every action.
-- `src/lib/supabase/middleware.ts` still hardcodes `profile.role === "admin"` for `/admin`,
-  so the future access model should be introduced behind centralized helpers, not by duplicating more string checks.
+- Editorial stock sources for the current public heroes are documented in `docs/photo-sources.md`.
+- Remote image loading for signed Supabase assets and YouTube thumbnails is now
+  whitelisted in `next.config.ts`.
+- Auth logic is now centralized around `src/lib/auth/permissions.ts`,
+  `src/lib/auth/session.ts`, and `src/lib/auth/live-access.ts`.
 
 ## Current Worktree Note
 
-As of 2026-03-28, `git status` shows local uncommitted UI work in public pages/navigation and volunteer scoring related files.
-Check the working tree before changing shared layout or public route files.
+Phase 2 touched shared auth/layout/admin/volunteer files heavily.
+Check `git status` before editing routing, auth, or scoring code in parallel with other work.

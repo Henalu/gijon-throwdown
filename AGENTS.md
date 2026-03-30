@@ -9,15 +9,23 @@ This version has breaking changes - APIs, conventions, and file structure may al
 - Stack: Next.js 16.2.1, React 19.2.4, Tailwind 4, Supabase SSR/Auth/Realtime.
 - App Router lives in `src/app`.
 - The current repo exposes four active surfaces: public site, admin backoffice, volunteer scoring, and live/overlay views.
+- The public site is now auth-aware and also exposes lightweight account/registration routes.
+  Desktop footer is intentionally legal/community-focused instead of duplicating the main nav,
+  and now points to internal legal pages instead of external links.
+  Desktop navbar also keeps public navigation visible while grouping internal
+  role shortcuts inside a compact account menu.
+- Protected `admin` and `voluntario` surfaces now also expose dedicated mobile
+  navigation overlays so internal users can keep moving through the app on
+  small screens.
 - Product direction now adds two clearer operating layers on top of that base:
   athlete/public consumption and head-judge validation of official results.
-- Current repo is still single-event, but target product direction now requires
-  a persistent people registry that can survive across yearly editions of the same competition.
+- Current repo is still single-event, but it now also includes a first `people`
+  registry layer intended to survive across yearly editions of the same competition.
 - Public UI copy is in Spanish and the visual system is dark-first with green/cyan brand accents from `src/app/globals.css`.
 
 ## Route Groups
 
-- `(public)`: event site and information pages.
+- `(public)`: event site, account hub, and public registration routes.
 - `(admin)`: protected admin routes under `/admin`.
 - `(volunteer)`: protected volunteer routes under `/voluntario`.
 - `(live)`: live heat screen and overlay routes.
@@ -34,20 +42,26 @@ This version has breaking changes - APIs, conventions, and file structure may al
   - `src/lib/supabase/client.ts`
   - `src/lib/supabase/middleware.ts`
   - `src/lib/supabase/admin.ts`
+  - `src/proxy.ts`
 
 ## Auth And Access
 
-- `src/middleware.ts` refreshes Supabase sessions and protects `/admin` and `/voluntario`.
-- Next 16 deprecates `middleware` in favor of `proxy.ts`. Treat that migration as known technical debt.
+- `src/proxy.ts` now refreshes Supabase sessions and protects `/admin`, `/voluntario`, and `/auth/setup`.
 - Write access is enforced primarily through Supabase RLS in `supabase/migrations/002_rls_policies.sql`.
 - The leaderboard comes from SQL objects in `supabase/migrations/003_functions.sql`.
-- Current implementation is still a simplified binary role model:
-  `profiles.role` only supports `admin` and `volunteer`.
-- Current schema also conflates auth/profile with the broader concept of a person linked to the event.
-- Target domain should distinguish:
-  - persistent person records reusable across editions
-  - auth-enabled user accounts
-  - edition-specific participations and roles
+- Current implementation now supports:
+  `superadmin`, `admin`, `volunteer`, `athlete`.
+- Score validation capability is modeled as `profiles.can_validate_scores`.
+- Volunteer judges are tracked through `profiles.is_judge` and the unified
+  volunteer registration flow, not through a separate global role.
+- Internal invited users must complete `/auth/setup` before entering protected surfaces.
+- Public visitors can now submit pending volunteer/team registrations without creating auth accounts.
+- The codebase now also distinguishes:
+  - persistent `people` records
+  - auth-enabled `profiles`
+  - athletic participation records in `athletes`
+- Admin can already convert public submissions into real people/entities from:
+  `/admin/voluntarios`, `/admin/equipos`, and `/admin/personas`
 - Target access model for the product should evolve to:
   - `superadmin`: full platform control, user creation, role changes, global configuration.
   - `admin`: competition operations, data editing, WOD/heats visibility, scoring config, no role management.
@@ -64,31 +78,33 @@ This version has breaking changes - APIs, conventions, and file structure may al
 ## Feature Coverage
 
 - Implemented and usable:
-  public pages, live heat page, overlay page, volunteer scoring flow, admin CRUD for event core entities, score finalization/publication, streaming URL config.
+  public pages, live heat page, overlay page, volunteer scoring flow,
+  admin CRUD for event core entities, score finalization/publication,
+  superadmin user management, invite/setup onboarding,
+  validator dashboard, live-entry gating per heat, streaming URL config,
+  auth-aware public shell, `/cuenta`, pending public registration capture/review,
+  people registry foundation, admin conversion flows, people-level admin review/invite tools,
+  athlete CRUD, workout-stage CRUD, volunteer-assignment UI, athlete invites after team conversion,
+  a filterable volunteer dashboard, an editorial photo layer on the public heroes,
+  first continuity/history support through `event_editions` and `edition_participations`,
+  public stream-session surfaces in `/directo`,
+  gallery upload/consumption through `/admin/media`, `/galeria`, and `/galeria/[id]`,
+  and unified volunteer/judge registration with judge labeling/filtering in internal UI.
 - Partial or missing:
-  athlete management, workout stage management, volunteer assignment UI, richer sponsor slot handling, public use of all event branding fields, media/stream session features.
-- Not implemented yet but now part of the target operating model:
-  superadmin user management, role editing UI, validator/head-judge dashboard, scoring rules configuration, and a clean live-to-official validation pipeline.
+  richer sponsor slot handling, public use of all event branding fields,
+  deeper gallery commerce/album workflow, and configurable scoring/legal/WodBuster layers.
 - Also missing but now product-critical:
-  reusable people registry, volunteer application flow, team-based athlete registration,
-  invitation emails, athlete profile/history, privacy/consent/retention layer,
+  richer multi-edition management on top of the continuity layer,
+  athlete profile/history beyond the current first account timeline, privacy/consent/retention layer,
   and explicit WodBuster bridge links while the external system is still in use.
 
 ## Verification Snapshot
 
-Reviewed on `2026-03-28`.
+Reviewed on `2026-03-29`.
 
 - `npm run build`: passes
-- `npx tsc --noEmit`: passes
-- `npx eslint src`: fails with 2 source errors and 8 warnings
-- `npm run lint`: noisy because ESLint also scans `.claude/worktrees/**`
-
-Known source lint errors:
-
-- `src/components/home/countdown-timer.tsx`
-- `src/app/(volunteer)/voluntario/heat/[heatId]/scoring-interface.tsx`
-
-Both are `react-hooks/set-state-in-effect`.
+- `npm run typecheck`: passes
+- `npm run lint:src`: passes
 
 ## Files To Keep In Sync
 
@@ -106,4 +122,4 @@ If you change routes, schema, auth behavior, operating assumptions, or delivery 
 
 - Do not edit generated output in `.next/**`.
 - Do not treat files inside `.claude/worktrees/**` as part of the main app unless the task explicitly targets those worktrees.
-- Check `git status` before editing shared public layout/navigation files; this repo often has local WIP there.
+- Check `git status` before editing shared auth/layout/navigation files; this repo often has local WIP there.

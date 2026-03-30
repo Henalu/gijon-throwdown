@@ -59,10 +59,15 @@ export default async function CategoryDetailPage({
             {category.name}
           </h1>
           <p className="text-muted-foreground text-lg mt-4">
-            {category.description}
+            {category.description ||
+              (category.team_size === 4
+                ? "Competicion por equipos de 4 personas, con una chica y tres chicos por equipo."
+                : "Categoria por equipos del evento.")}
           </p>
           <Badge variant="outline" className="mt-4 border-brand-green/30 text-brand-green">
-            Equipos de {category.team_size}
+            {category.team_size === 4
+              ? "Equipos de 4 personas · 1 chica + 3 chicos"
+              : `Equipos de ${category.team_size}`}
           </Badge>
         </div>
       </section>

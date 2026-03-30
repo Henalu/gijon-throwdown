@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentSessionProfile } from "@/lib/auth/session";
+import { canUserOperateHeat } from "@/lib/auth/live-access";
 
 export async function submitLiveUpdate(data: {
   lane_id: string;
@@ -10,15 +12,32 @@ export async function submitLiveUpdate(data: {
   cumulative: number;
   workout_stage_id?: string;
 }): Promise<{ error: string } | { success: true }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  const session = await getCurrentSessionProfile();
+  if (!session.user || !session.profile) {
     return { error: "No autenticado" };
+  }
+
+  const supabase = await createClient();
+  const access = await canUserOperateHeat({
+    supabase,
+    profile: session.profile,
+    userId: session.user.id,
+    heatId: data.heat_id,
+  });
+
+  if (!access.allowed) {
+    return { error: access.reason ?? "No puedes operar este heat" };
+  }
+
+  const { data: lane } = await supabase
+    .from("lanes")
+    .select("id")
+    .eq("id", data.lane_id)
+    .eq("heat_id", data.heat_id)
+    .maybeSingle();
+
+  if (!lane) {
+    return { error: "La lane no pertenece al heat indicado" };
   }
 
   const { error } = await supabase.from("live_updates").insert({
@@ -28,7 +47,7 @@ export async function submitLiveUpdate(data: {
     update_type: data.update_type,
     value: data.value,
     cumulative: data.cumulative,
-    submitted_by: user.id,
+    submitted_by: session.user.id,
   });
 
   if (error) {
@@ -42,15 +61,32 @@ export async function markLaneFinished(
   lane_id: string,
   heat_id: string
 ): Promise<{ error: string } | { success: true }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  const session = await getCurrentSessionProfile();
+  if (!session.user || !session.profile) {
     return { error: "No autenticado" };
+  }
+
+  const supabase = await createClient();
+  const access = await canUserOperateHeat({
+    supabase,
+    profile: session.profile,
+    userId: session.user.id,
+    heatId: heat_id,
+  });
+
+  if (!access.allowed) {
+    return { error: access.reason ?? "No puedes operar este heat" };
+  }
+
+  const { data: lane } = await supabase
+    .from("lanes")
+    .select("id")
+    .eq("id", lane_id)
+    .eq("heat_id", heat_id)
+    .maybeSingle();
+
+  if (!lane) {
+    return { error: "La lane no pertenece al heat indicado" };
   }
 
   // Get the latest cumulative value for this lane
@@ -73,7 +109,7 @@ export async function markLaneFinished(
     update_type: "finished",
     value: 0,
     cumulative: latest?.cumulative ?? 0,
-    submitted_by: user.id,
+    submitted_by: session.user.id,
   });
 
   if (error) {

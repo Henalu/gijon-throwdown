@@ -2,7 +2,7 @@
 // Domain Types - Gijon Throwdown
 // ============================================================
 
-export type UserRole = "admin" | "volunteer";
+export type UserRole = "superadmin" | "admin" | "volunteer" | "athlete";
 
 export type HeatStatus = "pending" | "active" | "finished";
 
@@ -11,6 +11,9 @@ export type WodType = "for_time" | "amrap" | "emom" | "max_weight" | "chipper" |
 export type ScoreType = "time" | "reps" | "weight" | "rounds_reps" | "points";
 
 export type SponsorTier = "title" | "gold" | "silver" | "bronze" | "partner";
+export type RegistrationStatus = "pending" | "approved" | "rejected";
+export type RegistrationMemberGender = "male" | "female";
+export type EditionParticipationRole = "athlete" | "volunteer" | "staff";
 
 export type SlotPosition =
   | "hero_section"
@@ -37,15 +40,23 @@ export type LiveUpdateType =
 
 export interface Profile {
   id: string;
+  person_id: string | null;
   role: UserRole;
   full_name: string;
+  email: string;
   avatar_url: string | null;
+  is_active: boolean;
+  is_judge: boolean;
+  can_validate_scores: boolean;
+  invited_at: string | null;
+  setup_completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface EventConfig {
   id: string;
+  active_edition_id: string | null;
   name: string;
   slug: string;
   description: string | null;
@@ -87,6 +98,7 @@ export interface Category {
 
 export interface Team {
   id: string;
+  edition_id: string | null;
   category_id: string;
   name: string;
   slug: string;
@@ -102,6 +114,8 @@ export interface Team {
 
 export interface Athlete {
   id: string;
+  edition_id: string | null;
+  person_id: string | null;
   team_id: string;
   first_name: string;
   last_name: string;
@@ -145,6 +159,7 @@ export interface Heat {
   heat_number: number;
   name: string | null;
   status: HeatStatus;
+  is_live_entry_enabled: boolean;
   scheduled_at: string | null;
   started_at: string | null;
   finished_at: string | null;
@@ -190,6 +205,7 @@ export interface Score {
   notes: string | null;
   submitted_by: string | null;
   verified_by: string | null;
+  verified_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -228,10 +244,131 @@ export interface VolunteerAssignment {
 export interface StreamSession {
   id: string;
   title: string;
+  description: string | null;
   youtube_url: string | null;
   is_live: boolean;
+  is_public: boolean;
+  sort_order: number;
   started_at: string | null;
   ended_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VolunteerApplication {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  shirt_size: string;
+  dietary_restrictions: string | null;
+  is_judge: boolean;
+  consent_accepted_at: string;
+  status: RegistrationStatus;
+  admin_notes: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  converted_person_id: string | null;
+  converted_profile_id: string | null;
+  converted_at: string | null;
+  converted_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Media {
+  id: string;
+  url: string;
+  thumbnail_url: string | null;
+  media_type: string;
+  title: string | null;
+  caption: string | null;
+  alt_text: string | null;
+  album: string | null;
+  storage_bucket: string | null;
+  storage_path: string | null;
+  price_label: string | null;
+  purchase_url: string | null;
+  sort_order: number;
+  is_visible: boolean;
+  download_enabled: boolean;
+  is_featured: boolean;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamRegistration {
+  id: string;
+  category_id: string;
+  team_name: string;
+  leader_name: string;
+  leader_email: string;
+  consent_accepted_at: string;
+  status: RegistrationStatus;
+  admin_notes: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  converted_team_id: string | null;
+  converted_at: string | null;
+  converted_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeamRegistrationMember {
+  id: string;
+  team_registration_id: string;
+  full_name: string;
+  email: string;
+  shirt_size: string;
+  gender: RegistrationMemberGender;
+  sort_order: number;
+  converted_person_id: string | null;
+  converted_athlete_id: string | null;
+  created_at: string;
+}
+
+export interface Person {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  full_name: string;
+  primary_email: string | null;
+  gender: RegistrationMemberGender | null;
+  shirt_size: string | null;
+  dietary_restrictions: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventEdition {
+  id: string;
+  slug: string;
+  label: string;
+  year: number | null;
+  starts_on: string | null;
+  ends_on: string | null;
+  venue_name: string | null;
+  location: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EditionParticipation {
+  id: string;
+  edition_id: string;
+  person_id: string;
+  profile_id: string | null;
+  team_id: string | null;
+  category_id: string | null;
+  athlete_id: string | null;
+  role: EditionParticipationRole;
+  invited_at: string | null;
+  activated_at: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }

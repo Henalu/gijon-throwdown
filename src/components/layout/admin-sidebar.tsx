@@ -3,34 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Calendar,
-  Users,
-  Dumbbell,
-  Timer,
-  Trophy,
-  Megaphone,
-  UserCheck,
-  Video,
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAdminSidebarLinks } from "@/components/layout/admin-navigation";
+import { protectedNavIcons } from "@/components/layout/protected-nav-icons";
 
-const sidebarLinks = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/evento", label: "Evento", icon: Calendar },
-  { href: "/admin/categorias", label: "Categorias", icon: Users },
-  { href: "/admin/equipos", label: "Equipos", icon: Users },
-  { href: "/admin/wods", label: "WODs", icon: Dumbbell },
-  { href: "/admin/heats", label: "Heats", icon: Timer },
-  { href: "/admin/puntuaciones", label: "Puntuaciones", icon: Trophy },
-  { href: "/admin/patrocinadores", label: "Sponsors", icon: Megaphone },
-  { href: "/admin/voluntarios", label: "Voluntarios", icon: UserCheck },
-  { href: "/admin/streaming", label: "Streaming", icon: Video },
-];
-
-export function AdminSidebar() {
+export function AdminSidebar({
+  isSuperadmin,
+  canValidateScores,
+}: {
+  isSuperadmin: boolean;
+  canValidateScores: boolean;
+}) {
   const pathname = usePathname();
+  const sidebarLinks = getAdminSidebarLinks({
+    isSuperadmin,
+    canValidateScores,
+  });
 
   return (
     <aside className="w-64 border-r border-border bg-sidebar-background flex flex-col shrink-0 hidden md:flex">
@@ -46,7 +36,7 @@ export function AdminSidebar() {
           const isActive =
             pathname === link.href ||
             (link.href !== "/admin" && pathname.startsWith(link.href));
-          const Icon = link.icon;
+          const Icon = protectedNavIcons[link.icon];
           return (
             <Link
               key={link.href}

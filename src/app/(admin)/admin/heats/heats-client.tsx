@@ -2,7 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Play, Square, CheckCircle2, UserPlus } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Play,
+  Square,
+  CheckCircle2,
+  UserPlus,
+  Lock,
+  Unlock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +40,7 @@ import {
 import {
   createHeat,
   updateHeatStatus,
+  updateHeatLiveEntry,
   deleteHeat,
   assignLane,
   removeLane,
@@ -123,6 +133,21 @@ export function HeatsClient({
     });
   }
 
+  function handleLiveEntryChange(id: string, isEnabled: boolean) {
+    startTransition(async () => {
+      const result = await updateHeatLiveEntry(id, isEnabled);
+      if ("error" in result) {
+        toast.error(result.error);
+      } else {
+        toast.success(
+          isEnabled
+            ? "Entrada live habilitada"
+            : "Entrada live deshabilitada",
+        );
+      }
+    });
+  }
+
   function handleAssignLane(formData: FormData) {
     startTransition(async () => {
       const result = await assignLane(formData);
@@ -175,6 +200,7 @@ export function HeatsClient({
                   isPending={isPending}
                   onStatusChange={handleStatusChange}
                   onDelete={handleDeleteHeat}
+                  onLiveEntryChange={handleLiveEntryChange}
                   onOpenLaneDialog={setLaneDialogHeat}
                   onRemoveLane={handleRemoveLane}
                 />
@@ -194,6 +220,7 @@ export function HeatsClient({
                   isPending={isPending}
                   onStatusChange={handleStatusChange}
                   onDelete={handleDeleteHeat}
+                  onLiveEntryChange={handleLiveEntryChange}
                   onOpenLaneDialog={setLaneDialogHeat}
                   onRemoveLane={handleRemoveLane}
                 />
@@ -255,6 +282,7 @@ function HeatCard({
   isPending,
   onStatusChange,
   onDelete,
+  onLiveEntryChange,
   onOpenLaneDialog,
   onRemoveLane,
 }: {
@@ -262,6 +290,7 @@ function HeatCard({
   isPending: boolean;
   onStatusChange: (id: string, status: HeatStatus) => void;
   onDelete: (id: string) => void;
+  onLiveEntryChange: (id: string, isEnabled: boolean) => void;
   onOpenLaneDialog: (heat: HeatRow) => void;
   onRemoveLane: (id: string) => void;
 }) {
@@ -282,6 +311,18 @@ function HeatCard({
           <span>{heat.categories?.name ?? "Sin cat."}</span>
           <span>-</span>
           <span>{formatSchedule(heat.scheduled_at)}</span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Badge
+            variant="outline"
+            className={
+              heat.is_live_entry_enabled
+                ? "border-brand-green/30 text-brand-green"
+                : "text-muted-foreground"
+            }
+          >
+            {heat.is_live_entry_enabled ? "Live entry ON" : "Live entry OFF"}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -325,6 +366,24 @@ function HeatCard({
           >
             <UserPlus data-icon="inline-start" />
             Lane
+          </Button>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => onLiveEntryChange(heat.id, !heat.is_live_entry_enabled)}
+            disabled={isPending}
+          >
+            {heat.is_live_entry_enabled ? (
+              <>
+                <Lock data-icon="inline-start" />
+                Cerrar live
+              </>
+            ) : (
+              <>
+                <Unlock data-icon="inline-start" />
+                Abrir live
+              </>
+            )}
           </Button>
           {status === "pending" && (
             <Button

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ScoringInterface } from "./scoring-interface";
+import { canUserOperateHeat } from "@/lib/auth/live-access";
+import { requireVolunteerSurfaceProfile } from "@/lib/auth/session";
 
 interface PageProps {
   params: Promise<{ heatId: string }>;
@@ -8,10 +10,15 @@ interface PageProps {
 
 export default async function VolunteerHeatPage({ params }: PageProps) {
   const { heatId } = await params;
+  const { user, profile } = await requireVolunteerSurfaceProfile(`/voluntario/heat/${heatId}`);
   const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login?redirect=/voluntario");
+  const access = await canUserOperateHeat({
+    supabase,
+    profile,
+    userId: user.id,
+    heatId,
+  });
+  if (!access.allowed) redirect("/voluntario");
 
   // Get heat with workout details and lanes
   const { data: heat } = await supabase
@@ -20,6 +27,7 @@ export default async function VolunteerHeatPage({ params }: PageProps) {
       id,
       heat_number,
       status,
+      is_live_entry_enabled,
       started_at,
       category:categories(name),
       workout:workouts(id, name, wod_type, score_type, time_cap_seconds, higher_is_better),

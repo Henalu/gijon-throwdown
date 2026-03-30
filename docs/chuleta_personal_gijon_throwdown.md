@@ -7,28 +7,47 @@ La version de bolsillo para no perderte.
 - Web publica del evento
 - Panel admin para operativa
 - Dashboard voluntario para live scoring
+- Modulo de validacion oficial
 - Vista live y overlay para stream
-- Base lista para crecer hacia roles, validacion oficial y registro de personas
+- Capa fotografica editorial ya repartida por la home, no solo en el hero
+- People registry ya operativo y base preparada para crecer hacia historial entre ediciones
 
 ## 2. Superficies
 
 - Publico: consumo del evento
-- Admin: configuracion y gestion
+- Admin: configuracion, gestion y cuadro de mando operativo
 - Voluntario: entrada rapida de datos live
 - Live/overlay: seguimiento y emision
 
 ## 3. Rutas que importan
 
 - `/`
+- `/cuenta`
+- `/registro/voluntarios`
+- `/registro/equipos`
+- `/privacidad`
+- `/cookies`
+- `/bases-legales`
+- `/aviso-legal`
 - `/directo`
+- `/galeria`
 - `/horarios`
 - `/clasificacion`
 - `/wods`
 - `/admin`
+- `/admin/personas`
+- `/admin/usuarios`
+- `/admin/validacion`
+- `/admin/equipos`
+- `/admin/wods`
+- `/admin/voluntarios`
+- `/admin/streaming`
+- `/admin/media`
 - `/voluntario`
 - `/live/[heatId]`
 - `/overlay/[heatId]`
 - `/auth/login`
+- `/auth/setup`
 
 ## 4. Ficheros que ensenan la arquitectura rapido
 
@@ -37,17 +56,25 @@ La version de bolsillo para no perderte.
 - `src/app/(public)/page.tsx`
 - `src/app/(public)/directo/page.tsx`
 - `src/app/(volunteer)/voluntario/heat/[heatId]/scoring-interface.tsx`
+- `src/app/(admin)/admin/validacion/[heatId]/validation-detail-client.tsx`
 - `src/lib/hooks/use-realtime-heat.ts`
 - `src/lib/actions/live-updates.ts`
 - `src/lib/actions/scores.ts`
-- `src/lib/supabase/middleware.ts`
+- `src/proxy.ts`
 
 ## 5. Tablas clave
 
 - `event_config`: configuracion del evento
+- `people`: registro canonico de personas
+- `event_editions`: ediciones del evento
 - `categories`: categorias
 - `teams`: equipos
+- `edition_participations`: memoria de participacion por edicion
 - `athletes`: atletas
+- `volunteer_applications`: solicitudes de voluntariado
+  y ahora tambien preferencia de juez
+- `team_registrations`: preinscripciones de equipo; atleta 1 queda como contacto responsable
+- `team_registration_members`: atletas de esas preinscripciones
 - `workouts`: WODs
 - `workout_stages`: etapas de un WOD
 - `heats`: series
@@ -56,6 +83,8 @@ La version de bolsillo para no perderte.
 - `scores`: resultados finales/publicables
 - `sponsors`: patrocinadores
 - `volunteer_assignments`: asignaciones operativas
+- `stream_sessions`: sesiones publicas de directo y replay
+- `media`: galeria oficial, descarga y compra configurable
 
 ## 6. Flujo de score, de forma muy simple
 
@@ -73,18 +102,17 @@ Si recuerdas eso, ya evitas media confusion del proyecto.
 
 ## 8. Modelo de acceso
 
-### Hoy
-
-- `admin`
-- `volunteer`
-
-### Objetivo
-
 - `superadmin`
 - `admin`
 - `volunteer`
 - `athlete`
 - `head_judge` como capability de validacion
+- `is_judge` como marca visible para perfiles de voluntariado/juez sin meter un rol global nuevo
+
+Y ahora ademas:
+
+- `profiles.person_id`
+- `athletes.person_id`
 
 ## 9. Filosofia de producto
 
@@ -108,20 +136,37 @@ Si recuerdas eso, ya evitas media confusion del proyecto.
 
 - shell publico mobile first
 - bottom nav y overlay movil unificados
+- navbar desktop limpia: navegacion publica visible y accesos por rol dentro de un menu de cuenta
+- admin y voluntario ya tienen menu movil propio para no quedarse encerrado en pantallas internas
+- usuarios internos, invitaciones y onboarding base
 - scoring live de voluntario
+- validacion oficial y publicacion controlada
+- people registry y conversion de registros a entidades reales
+- `/admin/personas`
+- `/cuenta` con contexto real para atleta enlazado
+- continuidad base entre ediciones con `event_editions` y `edition_participations`
+- CRUD admin para athletes dentro de `/admin/equipos`
+- CRUD admin para workout stages dentro de `/admin/wods`
+- UI admin para volunteer assignments dentro de `/admin/voluntarios`
+- invitacion explicita de atletas despues de convertir un equipo
+- dashboard voluntario con filtros por categoria, heat, WOD y equipo
+- heroes editoriales con foto en home, directo y WODs
+- footer desktop con paginas legales internas dentro de la propia web
+- `/admin/streaming` con sesiones publicas reales
+- `/admin/media` con subida de fotos, descarga y compra configurable
+- `/galeria` y `/galeria/[id]` como capa publica de fotos
 - live heat y overlay
 - admin base
 - build, typecheck y lint del source
 
 ## 12. Lo que sigue pendiente
 
-- permisos completos
-- dashboard de validacion oficial
-- registro de voluntarios
-- registro de atletas por equipo
+- perfil atleta mas profundo y gestion multi-edicion mas visible
+- scoring rules configurables
 - capa legal de datos
 - puente visible con WodBuster
-- historico entre ediciones
+- checkout real para compra de fotos si no se quiere depender solo de `purchase_url`
+- onboarding atleta mas redondo tras la invitacion
 
 ## 13. Lo que solo puedes cerrar tu
 
@@ -133,7 +178,14 @@ Si recuerdas eso, ya evitas media confusion del proyecto.
 - politica legal y de retencion
 - definicion exacta del historico entre ediciones
 
-## 14. Frase-resumen para no liarte
+## 14. Remate final recomendado
+
+1. Alinear seed y categorias con equipos de 4.
+2. Completar `/admin/evento`.
+3. Cerrar scoring configurable, legal y WodBuster.
+4. Aplicar migraciones y hacer smoke test en produccion.
+
+## 15. Frase-resumen para no liarte
 
 > Gijon Throwdown no es solo una web del evento. Es una plataforma que quiere unir informacion, operativa live y resultados oficiales en una sola casa.
 
