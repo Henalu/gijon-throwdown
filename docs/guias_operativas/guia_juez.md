@@ -29,6 +29,8 @@ No para publicar resultados oficiales por inspiracion divina.
 - actuar como referencia de pista
 - arbitrar el heat
 - ayudar a que la entrada live tenga sentido
+- guardar parciales cuando conviene dejar un punto de control
+- cerrar una calle al terminar antes del cap y dejar observacion para validacion
 - colaborar con voluntariado y operativa
 
 ## Lo que no te toca
@@ -44,7 +46,9 @@ No para publicar resultados oficiales por inspiracion divina.
 2. localiza el heat correcto
 3. entra en el heat
 4. arbitra con criterio y consistencia
-5. si hay dudas operativas serias, coordina con admin
+5. si un equipo acaba antes del cap, cierra su calle y anota cualquier incidencia relevante
+6. si el cap llega, no sigas sumando: la edicion normal queda bloqueada y el sistema cierra lo que siga abierto
+7. si hay dudas operativas serias, coordina con admin
 
 ## Regla importante
 

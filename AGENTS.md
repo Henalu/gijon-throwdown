@@ -43,6 +43,10 @@ This version has breaking changes - APIs, conventions, and file structure may al
   - `src/lib/supabase/middleware.ts`
   - `src/lib/supabase/admin.ts`
   - `src/proxy.ts`
+- Live operations now use three provisional layers:
+  `live_updates` for granular score changes,
+  `live_checkpoints` for optional manual partials,
+  and `live_lane_results` for lane closure state, final elapsed time, and judge notes.
 
 ## Auth And Access
 
@@ -94,7 +98,8 @@ This version has breaking changes - APIs, conventions, and file structure may al
   public pages, live heat page, overlay page, volunteer scoring flow,
   admin CRUD for event core entities, score finalization/publication,
   superadmin user management, invite/setup onboarding,
-  validator dashboard, live-entry gating per heat, streaming URL config,
+  validator dashboard, auditable live scoring with manual checkpoints for any WOD,
+  lane closure notes, time-cap auto-close and live-entry gating per heat, streaming URL config,
   auth-aware public shell, `/cuenta`, pending public registration capture/review,
   people registry foundation, admin conversion flows, people-level admin review/invite tools,
   athlete CRUD, workout-stage CRUD, volunteer-assignment UI, athlete invites after team conversion,

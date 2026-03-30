@@ -28,6 +28,9 @@ Sin convertir una accion de tres segundos en una tesis doctoral.
 - buscar por categoria, heat, equipo o WOD
 - entrar al heat correcto
 - meter datos live provisionales
+- guardar parciales manuales si hace falta dejar referencia intermedia
+- cerrar una calle cuando un equipo termina antes del cap
+- dejar una observacion final para revision posterior
 - apoyar la operativa del evento desde movil
 
 ## Lo que no te toca
@@ -44,6 +47,8 @@ Sin convertir una accion de tres segundos en una tesis doctoral.
 3. comprueba que estas en el correcto antes de tocar nada
 4. entra en `/voluntario/heat/[heatId]`
 5. registra lo que vaya pasando
+6. si un equipo termina antes del cap, cierra su calle y deja nota si hace falta
+7. si el cap llega, deja de sumar: el sistema bloquea la edicion normal y conserva el ultimo valor registrado
 
 ## Consejo que ahorra disgustos
 

@@ -1,14 +1,23 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Radio, Flag, Trophy } from "lucide-react";
+import { Flag, Radio, Trophy } from "lucide-react";
 import { useRealtimeHeat } from "@/lib/hooks/use-realtime-heat";
+import {
+  formatElapsedMs,
+  getPublicLaneResultLabel,
+} from "@/lib/live-scoring";
 
 interface LaneInfo {
   id: string;
   lane_number: number;
-  team: { id: string; name: string; box_name: string | null; logo_url: string | null } | null;
+  team: {
+    id: string;
+    name: string;
+    box_name: string | null;
+    logo_url: string | null;
+  } | null;
 }
 
 interface LiveHeatViewProps {
@@ -22,7 +31,16 @@ interface LiveHeatViewProps {
   timeCap: number | null;
   categoryName: string;
   lanes: LaneInfo[];
-  initialLaneStates: Record<string, { cumulative: number; is_finished: boolean }>;
+  initialLaneStates: Record<
+    string,
+    {
+      cumulative: number;
+      is_finished: boolean;
+      close_reason: string | null;
+      final_metric_type: string | null;
+      final_elapsed_ms: number | null;
+    }
+  >;
 }
 
 const scoreLabel: Record<string, string> = {
@@ -34,64 +52,80 @@ const scoreLabel: Record<string, string> = {
   calories: "CAL",
 };
 
+function formatTimer(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export function LiveHeatView({
   heatId,
   heatNumber,
   heatStatus,
   heatStartedAt,
   workoutName,
+  workoutType,
   scoreType,
   timeCap,
   categoryName,
   lanes,
   initialLaneStates,
 }: LiveHeatViewProps) {
-  // Merge initial state with realtime
-  const { laneStates: realtimeStates, isConnected } = useRealtimeHeat(heatId);
+  const {
+    laneStates: realtimeStates,
+    isConnected,
+    heatStatus: liveHeatStatus,
+  } = useRealtimeHeat(heatId, heatStatus);
 
   const laneData = useMemo(() => {
     return lanes.map((lane) => {
       const rt = realtimeStates[lane.id];
       const init = initialLaneStates[lane.id];
-      const cumulative = rt?.cumulative ?? init?.cumulative ?? 0;
-      const isFinished = rt?.is_finished ?? init?.is_finished ?? false;
-      return { ...lane, cumulative, isFinished };
+      return {
+        ...lane,
+        cumulative: rt?.cumulative ?? init?.cumulative ?? 0,
+        isFinished: rt?.is_finished ?? init?.is_finished ?? false,
+        closeReason: rt?.close_reason ?? init?.close_reason ?? null,
+        finalElapsedMs: rt?.final_elapsed_ms ?? init?.final_elapsed_ms ?? null,
+      };
     });
-  }, [lanes, realtimeStates, initialLaneStates]);
+  }, [initialLaneStates, lanes, realtimeStates]);
 
-  // Sort by cumulative for ranking (higher = better for most types)
   const ranked = useMemo(() => {
     const sorted = [...laneData].sort((a, b) => {
-      // Finished lanes go to top
-      if (a.isFinished && !b.isFinished) return -1;
-      if (!a.isFinished && b.isFinished) return 1;
-      // Then by cumulative
+      if (scoreType === "time" || workoutType === "for_time") {
+        const aCompleted = a.closeReason === "completed";
+        const bCompleted = b.closeReason === "completed";
+
+        if (aCompleted !== bCompleted) return aCompleted ? -1 : 1;
+
+        if (aCompleted && bCompleted) {
+          return (a.finalElapsedMs ?? Number.MAX_SAFE_INTEGER) -
+            (b.finalElapsedMs ?? Number.MAX_SAFE_INTEGER);
+        }
+
+        return b.cumulative - a.cumulative;
+      }
+
+      if (a.isFinished !== b.isFinished) return a.isFinished ? -1 : 1;
       return b.cumulative - a.cumulative;
     });
-    return sorted.map((lane, i) => ({ ...lane, rank: i + 1 }));
-  }, [laneData]);
 
-  // Leader
+    return sorted.map((lane, index) => ({ ...lane, rank: index + 1 }));
+  }, [laneData, scoreType, workoutType]);
+
   const leader = ranked[0];
 
-  // Timer
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    if (heatStatus !== "active" || !heatStartedAt) return;
+    if (liveHeatStatus !== "active" || !heatStartedAt) return;
     const start = new Date(heatStartedAt).getTime();
     const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [heatStatus, heatStartedAt]);
+  }, [heatStartedAt, liveHeatStatus]);
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
-  };
-
-  // Columns based on lane count
   const gridCols =
     lanes.length <= 4
       ? "grid-cols-2 md:grid-cols-4"
@@ -100,44 +134,49 @@ export function LiveHeatView({
         : "grid-cols-2 md:grid-cols-4";
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-4 md:p-8 flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-[#050505] p-4 text-white md:p-8">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter">
+            <h1 className="text-3xl font-black uppercase tracking-tighter md:text-5xl">
               {workoutName}
             </h1>
-            {heatStatus === "active" && (
-              <Badge className="bg-red-500/20 text-red-400 border-red-500/30 animate-pulse-live text-sm">
+            {liveHeatStatus === "active" && (
+              <Badge className="animate-pulse-live border-red-500/30 bg-red-500/20 text-sm text-red-400">
                 <Radio size={14} className="mr-1" />
                 EN VIVO
               </Badge>
             )}
-            {heatStatus === "finished" && (
-              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-sm">
+            {liveHeatStatus === "finished" && (
+              <Badge className="border-blue-500/30 bg-blue-500/20 text-sm text-blue-400">
                 FINALIZADO
               </Badge>
             )}
           </div>
-          <p className="text-white/50 text-sm mt-1">
+          <p className="mt-1 text-sm text-white/50">
             {categoryName} | Heat {heatNumber}
           </p>
         </div>
 
         <div className="text-right">
-          {heatStatus === "active" && heatStartedAt && (
-            <p className={`font-mono text-4xl md:text-6xl font-black ${timeCap && elapsed >= timeCap ? "text-red-400" : "text-brand-green"}`}>
-              {formatTime(elapsed)}
+          {heatStartedAt && (
+            <p
+              className={`font-mono text-4xl font-black md:text-6xl ${
+                timeCap && elapsed >= timeCap ? "text-red-400" : "text-brand-green"
+              }`}
+            >
+              {formatTimer(Math.min(elapsed, timeCap ?? elapsed))}
             </p>
           )}
           {timeCap && (
-            <p className="text-white/30 text-xs font-mono">
-              CAP {formatTime(timeCap)}
-            </p>
+            <p className="text-xs font-mono text-white/30">CAP {formatTimer(timeCap)}</p>
           )}
-          <div className="flex items-center gap-1 justify-end mt-1">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-brand-green" : "bg-yellow-500 animate-pulse"}`} />
+          <div className="mt-1 flex items-center justify-end gap-1">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isConnected ? "bg-brand-green" : "animate-pulse bg-yellow-500"
+              }`}
+            />
             <span className="text-[10px] text-white/30">
               {isConnected ? "LIVE" : "RECONNECTING"}
             </span>
@@ -145,68 +184,66 @@ export function LiveHeatView({
         </div>
       </div>
 
-      {/* Lane cards */}
-      <div className={`grid ${gridCols} gap-4 flex-1`}>
+      <div className={`grid ${gridCols} gap-4`}>
         {ranked.map((lane) => {
           const isLeader = leader && lane.id === leader.id && lane.cumulative > 0;
+          const showFinalTime =
+            (scoreType === "time" || workoutType === "for_time") &&
+            lane.closeReason === "completed" &&
+            lane.finalElapsedMs != null;
 
           return (
             <div
               key={lane.id}
-              className={`relative rounded-2xl p-6 flex flex-col items-center justify-center transition-all duration-300 ${
+              className={`relative flex min-h-[18rem] flex-col items-center justify-center rounded-2xl p-6 transition-all duration-300 ${
                 lane.isFinished
-                  ? "bg-brand-green/10 border-2 border-brand-green/40"
+                  ? "border-2 border-brand-green/40 bg-brand-green/10"
                   : isLeader
-                    ? "bg-brand-green/5 border-2 border-brand-green/30"
-                    : "bg-white/5 border border-white/10"
+                    ? "border-2 border-brand-green/30 bg-brand-green/5"
+                    : "border border-white/10 bg-white/5"
               }`}
             >
-              {/* Lane number */}
-              <div className="absolute top-3 left-4 text-white/20 text-sm font-mono">
+              <div className="absolute left-4 top-3 text-sm font-mono text-white/20">
                 #{lane.lane_number}
               </div>
 
-              {/* Leader indicator */}
               {isLeader && !lane.isFinished && (
-                <div className="absolute top-3 right-4">
+                <div className="absolute right-4 top-3">
                   <Trophy size={16} className="text-brand-green" />
                 </div>
               )}
 
-              {/* Finished indicator */}
               {lane.isFinished && (
-                <div className="absolute top-3 right-4">
+                <div className="absolute right-4 top-3 flex items-center gap-2">
                   <Flag size={16} className="text-brand-green" />
+                  <span className="text-[10px] uppercase tracking-[0.24em] text-white/40">
+                    {getPublicLaneResultLabel(lane.closeReason as never)}
+                  </span>
                 </div>
               )}
 
-              {/* Team name */}
-              <p className="text-sm font-bold text-white/70 mb-2 text-center truncate w-full">
+              <p className="mb-2 w-full truncate text-center text-sm font-bold text-white/70">
                 {lane.team?.name ?? "---"}
               </p>
 
-              {/* Score */}
               <p
-                className={`text-6xl md:text-8xl font-black tabular-nums transition-all duration-200 ${
-                  lane.isFinished
-                    ? "text-brand-green"
-                    : isLeader
-                      ? "text-brand-green"
-                      : "text-white"
+                className={`font-black tabular-nums transition-all duration-200 ${
+                  showFinalTime ? "text-4xl md:text-6xl" : "text-6xl md:text-8xl"
+                } ${
+                  lane.isFinished || isLeader ? "text-brand-green" : "text-white"
                 }`}
-                key={`${lane.id}-${lane.cumulative}`}
               >
-                {lane.cumulative}
+                {showFinalTime ? formatElapsedMs(lane.finalElapsedMs) : lane.cumulative}
               </p>
 
-              {/* Score type label */}
-              <p className="text-[10px] text-white/30 uppercase tracking-widest mt-1">
-                {scoreLabel[scoreType] || "REPS"}
+              <p className="mt-1 text-[10px] uppercase tracking-widest text-white/30">
+                {showFinalTime
+                  ? "TIEMPO FINAL"
+                  : scoreLabel[scoreType] || "REPS"}
               </p>
 
-              {/* Box name */}
               {lane.team?.box_name && (
-                <p className="text-[10px] text-white/20 mt-2 truncate w-full text-center">
+                <p className="mt-2 w-full truncate text-center text-[10px] text-white/20">
                   {lane.team.box_name}
                 </p>
               )}
@@ -215,9 +252,8 @@ export function LiveHeatView({
         })}
       </div>
 
-      {/* Footer branding */}
       <div className="mt-6 text-center">
-        <p className="text-white/10 text-xs font-mono uppercase tracking-[0.3em]">
+        <p className="text-xs font-mono uppercase tracking-[0.3em] text-white/10">
           Gijon Throwdown
         </p>
       </div>

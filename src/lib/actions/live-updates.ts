@@ -1,8 +1,127 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 import { getCurrentSessionProfile } from "@/lib/auth/session";
 import { canUserOperateHeat } from "@/lib/auth/live-access";
+import { createClient } from "@/lib/supabase/server";
+import {
+  closeOpenLanesForHeat,
+  ensureLaneBelongsToHeat,
+  fetchHeatLaneResults,
+  fetchHeatLiveContext,
+  type HeatLiveContext,
+} from "@/lib/live-results-server";
+import {
+  hasTimeCapElapsed,
+} from "@/lib/live-scoring";
+import type {
+  LiveLaneCloseReason,
+  LiveMetricType,
+} from "@/types";
+
+type LiveMutationResult =
+  | { error: string }
+  | { success: true; heatClosed?: boolean };
+
+type LiveOperatorContext =
+  | { error: string }
+  | {
+      session: Awaited<ReturnType<typeof getCurrentSessionProfile>> & {
+        user: NonNullable<Awaited<ReturnType<typeof getCurrentSessionProfile>>["user"]>;
+        profile: NonNullable<
+          Awaited<ReturnType<typeof getCurrentSessionProfile>>["profile"]
+        >;
+      };
+      supabase: Awaited<ReturnType<typeof createClient>>;
+      heat: HeatLiveContext & {
+        workout: NonNullable<HeatLiveContext["workout"]>;
+      };
+    };
+
+function revalidateHeatLivePaths(heatId: string) {
+  revalidatePath("/voluntario");
+  revalidatePath(`/voluntario/heat/${heatId}`);
+  revalidatePath("/admin/heats");
+  revalidatePath("/admin/puntuaciones");
+  revalidatePath("/admin/validacion");
+  revalidatePath(`/admin/validacion/${heatId}`);
+  revalidatePath(`/live/${heatId}`);
+  revalidatePath(`/overlay/${heatId}`);
+}
+
+async function requireLiveOperatorContext(
+  heatId: string,
+): Promise<LiveOperatorContext> {
+  const session = await getCurrentSessionProfile();
+  if (!session.user || !session.profile) {
+    return { error: "No autenticado" as const };
+  }
+
+  const supabase = await createClient();
+  const access = await canUserOperateHeat({
+    supabase,
+    profile: session.profile,
+    userId: session.user.id,
+    heatId,
+  });
+
+  if (!access.allowed) {
+    return { error: access.reason ?? "No puedes operar este heat" as const };
+  }
+
+  const heat = await fetchHeatLiveContext(supabase, heatId);
+  if (!heat || !heat.workout) {
+    return { error: "Heat no encontrado" as const };
+  }
+
+  return {
+    session: {
+      ...session,
+      user: session.user,
+      profile: session.profile,
+    },
+    supabase,
+    heat: {
+      ...heat,
+      workout: heat.workout,
+    },
+  };
+}
+
+async function maybeAutoCloseHeatAtCap(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  heatId: string;
+  actorId: string;
+}) {
+  const { supabase, heatId, actorId } = params;
+  const heat = await fetchHeatLiveContext(supabase, heatId);
+
+  if (!heat || !heat.workout) {
+    return { closed: false, error: "Heat no encontrado" };
+  }
+
+  if (heat.status === "finished") {
+    return { closed: false };
+  }
+
+  if (
+    !heat.workout.time_cap_seconds ||
+    !hasTimeCapElapsed(heat.started_at, heat.workout.time_cap_seconds)
+  ) {
+    return { closed: false };
+  }
+
+  await closeOpenLanesForHeat({
+    supabase,
+    heat,
+    actorId,
+    closeReason: "time_cap",
+    closeHeat: true,
+  });
+
+  revalidateHeatLivePaths(heatId);
+  return { closed: true };
+}
 
 export async function submitLiveUpdate(data: {
   lane_id: string;
@@ -11,112 +130,230 @@ export async function submitLiveUpdate(data: {
   value: number;
   cumulative: number;
   workout_stage_id?: string;
-}): Promise<{ error: string } | { success: true }> {
-  const session = await getCurrentSessionProfile();
-  if (!session.user || !session.profile) {
-    return { error: "No autenticado" };
+}): Promise<LiveMutationResult> {
+  const actor = await requireLiveOperatorContext(data.heat_id);
+  if ("error" in actor) {
+    return { error: actor.error };
   }
 
-  const supabase = await createClient();
-  const access = await canUserOperateHeat({
-    supabase,
-    profile: session.profile,
-    userId: session.user.id,
+  if (actor.heat.status === "finished") {
+    return { error: "El heat ya esta cerrado" };
+  }
+
+  const autoClosed = await maybeAutoCloseHeatAtCap({
+    supabase: actor.supabase,
     heatId: data.heat_id,
+    actorId: actor.session.user.id,
   });
 
-  if (!access.allowed) {
-    return { error: access.reason ?? "No puedes operar este heat" };
+  if (autoClosed.closed) {
+    return { error: "Se ha alcanzado el time cap y el heat se ha cerrado" };
   }
 
-  const { data: lane } = await supabase
-    .from("lanes")
-    .select("id")
-    .eq("id", data.lane_id)
-    .eq("heat_id", data.heat_id)
-    .maybeSingle();
-
+  const lane = await ensureLaneBelongsToHeat(
+    actor.supabase,
+    data.lane_id,
+    data.heat_id,
+  );
   if (!lane) {
     return { error: "La lane no pertenece al heat indicado" };
   }
 
-  const { error } = await supabase.from("live_updates").insert({
+  const existingResults = await fetchHeatLaneResults(actor.supabase, data.heat_id);
+  if (existingResults[data.lane_id]) {
+    return { error: "La calle ya esta cerrada" };
+  }
+
+  const { error } = await actor.supabase.from("live_updates").insert({
     lane_id: data.lane_id,
     heat_id: data.heat_id,
     workout_stage_id: data.workout_stage_id || null,
     update_type: data.update_type,
     value: data.value,
     cumulative: data.cumulative,
-    submitted_by: session.user.id,
+    submitted_by: actor.session.user.id,
   });
 
   if (error) {
     return { error: error.message };
   }
 
+  revalidateHeatLivePaths(data.heat_id);
   return { success: true };
 }
 
-export async function markLaneFinished(
-  lane_id: string,
-  heat_id: string
-): Promise<{ error: string } | { success: true }> {
-  const session = await getCurrentSessionProfile();
-  if (!session.user || !session.profile) {
-    return { error: "No autenticado" };
+export async function saveLiveCheckpoint(data: {
+  lane_id: string;
+  heat_id: string;
+  value: number;
+  metric_type: LiveMetricType;
+  elapsed_ms: number | null;
+}): Promise<LiveMutationResult> {
+  const actor = await requireLiveOperatorContext(data.heat_id);
+  if ("error" in actor) {
+    return { error: actor.error };
   }
 
-  const supabase = await createClient();
-  const access = await canUserOperateHeat({
-    supabase,
-    profile: session.profile,
-    userId: session.user.id,
-    heatId: heat_id,
+  if (actor.heat.status === "finished") {
+    return { error: "El heat ya esta cerrado" };
+  }
+
+  const autoClosed = await maybeAutoCloseHeatAtCap({
+    supabase: actor.supabase,
+    heatId: data.heat_id,
+    actorId: actor.session.user.id,
   });
 
-  if (!access.allowed) {
-    return { error: access.reason ?? "No puedes operar este heat" };
+  if (autoClosed.closed) {
+    return { error: "Se ha alcanzado el time cap y el heat se ha cerrado" };
   }
 
-  const { data: lane } = await supabase
-    .from("lanes")
-    .select("id")
-    .eq("id", lane_id)
-    .eq("heat_id", heat_id)
-    .maybeSingle();
-
+  const lane = await ensureLaneBelongsToHeat(
+    actor.supabase,
+    data.lane_id,
+    data.heat_id,
+  );
   if (!lane) {
     return { error: "La lane no pertenece al heat indicado" };
   }
 
-  // Get the latest cumulative value for this lane
-  const { data: latest, error: fetchError } = await supabase
-    .from("live_updates")
-    .select("cumulative")
-    .eq("lane_id", lane_id)
-    .eq("heat_id", heat_id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (fetchError && fetchError.code !== "PGRST116") {
-    return { error: fetchError.message };
+  const existingResults = await fetchHeatLaneResults(actor.supabase, data.heat_id);
+  if (existingResults[data.lane_id]) {
+    return { error: "La calle ya esta cerrada" };
   }
 
-  const { error } = await supabase.from("live_updates").insert({
-    lane_id,
-    heat_id,
-    update_type: "finished",
-    value: 0,
-    cumulative: latest?.cumulative ?? 0,
-    submitted_by: session.user.id,
+  const { error } = await actor.supabase.from("live_checkpoints").insert({
+    heat_id: data.heat_id,
+    lane_id: data.lane_id,
+    value: data.value,
+    metric_type: data.metric_type,
+    elapsed_ms: data.elapsed_ms,
+    submitted_by: actor.session.user.id,
   });
 
   if (error) {
     return { error: error.message };
   }
 
+  revalidateHeatLivePaths(data.heat_id);
   return { success: true };
+}
+
+export async function closeLaneResult(data: {
+  lane_id: string;
+  heat_id: string;
+  close_reason: LiveLaneCloseReason;
+  final_value: number;
+  final_metric_type: LiveMetricType;
+  final_elapsed_ms: number | null;
+  judge_notes?: string;
+}): Promise<LiveMutationResult> {
+  const actor = await requireLiveOperatorContext(data.heat_id);
+  if ("error" in actor) {
+    return { error: actor.error };
+  }
+
+  const lane = await ensureLaneBelongsToHeat(
+    actor.supabase,
+    data.lane_id,
+    data.heat_id,
+  );
+  if (!lane) {
+    return { error: "La lane no pertenece al heat indicado" };
+  }
+
+  const capMs = actor.heat.workout.time_cap_seconds
+    ? actor.heat.workout.time_cap_seconds * 1000
+    : null;
+
+  if (
+    data.close_reason === "completed" &&
+    capMs != null &&
+    data.final_elapsed_ms != null &&
+    data.final_elapsed_ms > capMs
+  ) {
+    return {
+      error: "No puedes marcar una calle como completada despues del time cap",
+    };
+  }
+
+  const { data: existingResult } = await actor.supabase
+    .from("live_lane_results")
+    .select("id, closed_by, closed_at")
+    .eq("heat_id", data.heat_id)
+    .eq("lane_id", data.lane_id)
+    .maybeSingle();
+
+  if (existingResult) {
+    const { error } = await actor.supabase
+      .from("live_lane_results")
+      .update({
+        close_reason: data.close_reason,
+        final_value: data.final_value,
+        final_metric_type: data.final_metric_type,
+        final_elapsed_ms:
+          data.close_reason === "time_cap" && capMs != null
+            ? capMs
+            : data.final_elapsed_ms,
+        judge_notes: data.judge_notes?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingResult.id);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    revalidateHeatLivePaths(data.heat_id);
+    return { success: true };
+  }
+
+  if (actor.heat.status === "finished") {
+    return { error: "El heat ya esta cerrado y la calle no admite un cierre nuevo" };
+  }
+
+  const { error } = await actor.supabase.from("live_lane_results").insert({
+    heat_id: data.heat_id,
+    lane_id: data.lane_id,
+    close_reason: data.close_reason,
+    final_value: data.final_value,
+    final_metric_type: data.final_metric_type,
+    final_elapsed_ms:
+      data.close_reason === "time_cap" && capMs != null
+        ? capMs
+        : data.final_elapsed_ms,
+    judge_notes: data.judge_notes?.trim() || null,
+    closed_by: actor.session.user.id,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidateHeatLivePaths(data.heat_id);
+  return { success: true };
+}
+
+export async function autoCloseHeatAtCap(
+  heatId: string,
+): Promise<LiveMutationResult> {
+  const actor = await requireLiveOperatorContext(heatId);
+  if ("error" in actor) {
+    return { error: actor.error };
+  }
+
+  const result = await maybeAutoCloseHeatAtCap({
+    supabase: actor.supabase,
+    heatId,
+    actorId: actor.session.user.id,
+  });
+
+  if (result.error) {
+    return { error: result.error };
+  }
+
+  return { success: true, heatClosed: result.closed };
 }
 
 export async function getLaneState(heat_id: string): Promise<
@@ -135,9 +372,6 @@ export async function getLaneState(heat_id: string): Promise<
 > {
   const supabase = await createClient();
 
-  // Fetch all updates for this heat ordered by lane and time,
-  // then pick the latest per lane using Supabase's distinct-on workaround:
-  // order by lane_id + created_at desc, so the first row per lane is the latest.
   const { data, error } = await supabase
     .from("live_updates")
     .select("lane_id, update_type, value, cumulative, workout_stage_id, created_at")
@@ -149,7 +383,6 @@ export async function getLaneState(heat_id: string): Promise<
     return { error: error.message };
   }
 
-  // Deduplicate: keep only the first (most recent) entry per lane_id
   const seen = new Set<string>();
   const latestPerLane = (data ?? []).filter((row) => {
     if (seen.has(row.lane_id)) return false;

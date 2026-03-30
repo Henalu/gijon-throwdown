@@ -65,7 +65,7 @@ La version de bolsillo para no entrar al repo con cara de "yo juraria que esto e
 ## 5. El flujo de score en una linea
 
 ```text
-voluntario -> live_updates -> realtime/live -> validacion oficial -> scores -> leaderboard
+voluntario -> live_updates + live_checkpoints + live_lane_results -> realtime/live -> validacion oficial -> scores -> leaderboard
 ```
 
 ## 6. Idea importante para no liarla
@@ -104,6 +104,8 @@ Si recuerdas esto, ya evitas una cantidad preciosa de confusion.
 - `workout_stages`
 - `heats`
 - `live_updates`
+- `live_checkpoints`
+- `live_lane_results`
 - `scores`
 - `volunteer_assignments`
 - `stream_sessions`

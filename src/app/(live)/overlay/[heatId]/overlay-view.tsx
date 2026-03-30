@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useRealtimeHeat } from "@/lib/hooks/use-realtime-heat";
+import { useEffect, useMemo, useState } from "react";
 import { Flag } from "lucide-react";
+import { useRealtimeHeat } from "@/lib/hooks/use-realtime-heat";
+import {
+  formatElapsedMs,
+  getPublicLaneResultLabel,
+} from "@/lib/live-scoring";
 
 interface OverlayViewProps {
   heatId: string;
@@ -12,7 +16,22 @@ interface OverlayViewProps {
   scoreType: string;
   timeCap: number | null;
   lanes: { id: string; lane_number: number; team: { name: string } | null }[];
-  initialStates: Record<string, { cumulative: number; is_finished: boolean }>;
+  initialStates: Record<
+    string,
+    {
+      cumulative: number;
+      is_finished: boolean;
+      close_reason: string | null;
+      final_metric_type: string | null;
+      final_elapsed_ms: number | null;
+    }
+  >;
+}
+
+function formatTimer(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export function OverlayView({
@@ -20,11 +39,15 @@ export function OverlayView({
   heatStatus,
   heatStartedAt,
   workoutName,
+  scoreType,
   timeCap,
   lanes,
   initialStates,
 }: OverlayViewProps) {
-  const { laneStates: realtimeStates } = useRealtimeHeat(heatId);
+  const { laneStates: realtimeStates, heatStatus: liveHeatStatus } = useRealtimeHeat(
+    heatId,
+    heatStatus,
+  );
 
   const laneData = useMemo(() => {
     return lanes.map((lane) => {
@@ -34,77 +57,101 @@ export function OverlayView({
         ...lane,
         cumulative: rt?.cumulative ?? init?.cumulative ?? 0,
         isFinished: rt?.is_finished ?? init?.is_finished ?? false,
+        closeReason: rt?.close_reason ?? init?.close_reason ?? null,
+        finalElapsedMs: rt?.final_elapsed_ms ?? init?.final_elapsed_ms ?? null,
       };
     });
-  }, [lanes, realtimeStates, initialStates]);
+  }, [initialStates, lanes, realtimeStates]);
 
-  // Rank by score
   const ranked = useMemo(() => {
-    const sorted = [...laneData].sort((a, b) => {
-      if (a.isFinished && !b.isFinished) return -1;
-      if (!a.isFinished && b.isFinished) return 1;
+    return [...laneData].sort((a, b) => {
+      if (scoreType === "time") {
+        const aCompleted = a.closeReason === "completed";
+        const bCompleted = b.closeReason === "completed";
+        if (aCompleted !== bCompleted) return aCompleted ? -1 : 1;
+        if (aCompleted && bCompleted) {
+          return (a.finalElapsedMs ?? Number.MAX_SAFE_INTEGER) -
+            (b.finalElapsedMs ?? Number.MAX_SAFE_INTEGER);
+        }
+      }
+
+      if (a.isFinished !== b.isFinished) return a.isFinished ? -1 : 1;
       return b.cumulative - a.cumulative;
     });
-    return sorted;
-  }, [laneData]);
+  }, [laneData, scoreType]);
 
-  // Timer
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    if (heatStatus !== "active" || !heatStartedAt) return;
+    if (liveHeatStatus !== "active" || !heatStartedAt) return;
     const start = new Date(heatStartedAt).getTime();
     const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [heatStatus, heatStartedAt]);
+  }, [heatStartedAt, liveHeatStatus]);
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
-  };
-
-  // Transparent background for OBS chroma / browser source
   return (
     <div className="min-h-screen bg-transparent p-4 font-mono">
-      {/* Timer bar */}
-      <div className="flex items-center justify-between mb-3 px-2">
-        <span className="text-white/80 text-sm font-bold uppercase">
+      <div className="mb-3 flex items-center justify-between px-2">
+        <span className="text-sm font-bold uppercase text-white/80">
           {workoutName}
         </span>
-        {heatStatus === "active" && heatStartedAt && (
-          <span className={`text-2xl font-black ${timeCap && elapsed >= timeCap ? "text-red-400" : "text-brand-green"}`}>
-            {formatTime(elapsed)}
+        {heatStartedAt && (
+          <span
+            className={`text-2xl font-black ${
+              timeCap && elapsed >= timeCap ? "text-red-400" : "text-brand-green"
+            }`}
+          >
+            {formatTimer(Math.min(elapsed, timeCap ?? elapsed))}
           </span>
         )}
       </div>
 
-      {/* Score rows */}
       <div className="space-y-1">
-        {ranked.map((lane, index) => (
-          <div
-            key={lane.id}
-            className={`flex items-center justify-between px-4 py-2 rounded-lg transition-all duration-300 ${
-              index === 0 && lane.cumulative > 0
-                ? "bg-brand-green/20 border border-brand-green/40"
-                : "bg-black/60 border border-white/10"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-white/40 text-sm w-6 text-right">{index + 1}</span>
-              <span className="text-white font-bold text-sm truncate max-w-[180px]">
-                {lane.team?.name ?? `Calle ${lane.lane_number}`}
-              </span>
+        {ranked.map((lane, index) => {
+          const showFinalTime =
+            scoreType === "time" &&
+            lane.closeReason === "completed" &&
+            lane.finalElapsedMs != null;
+
+          return (
+            <div
+              key={lane.id}
+              className={`flex items-center justify-between rounded-lg px-4 py-2 transition-all duration-300 ${
+                index === 0 && lane.cumulative > 0
+                  ? "border border-brand-green/40 bg-brand-green/20"
+                  : "border border-white/10 bg-black/60"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-6 text-right text-sm text-white/40">
+                  {index + 1}
+                </span>
+                <span className="max-w-[180px] truncate text-sm font-bold text-white">
+                  {lane.team?.name ?? `Calle ${lane.lane_number}`}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {lane.isFinished && <Flag size={12} className="text-brand-green" />}
+                <span
+                  className={`text-2xl font-black tabular-nums ${
+                    lane.isFinished ||
+                    (index === 0 && lane.cumulative > 0)
+                      ? "text-brand-green"
+                      : "text-white"
+                  }`}
+                >
+                  {showFinalTime ? formatElapsedMs(lane.finalElapsedMs) : lane.cumulative}
+                </span>
+                {lane.isFinished && (
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-white/35">
+                    {getPublicLaneResultLabel(lane.closeReason as never)}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {lane.isFinished && <Flag size={12} className="text-brand-green" />}
-              <span className={`text-2xl font-black tabular-nums ${lane.isFinished ? "text-brand-green" : index === 0 && lane.cumulative > 0 ? "text-brand-green" : "text-white"}`}>
-                {lane.cumulative}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

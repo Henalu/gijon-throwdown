@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { LiveUpdate } from "@/types";
+import type {
+  LiveLaneCloseReason,
+  LiveLaneResult,
+  LiveMetricType,
+  LiveUpdate,
+} from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-
-// ------------------------------------------------------------------
-// Types
-// ------------------------------------------------------------------
 
 export interface LaneState {
   lane_id: string;
@@ -15,53 +16,104 @@ export interface LaneState {
   last_update_type: string;
   is_finished: boolean;
   last_updated_at: string;
+  close_reason: LiveLaneCloseReason | null;
+  final_metric_type: LiveMetricType | null;
+  final_elapsed_ms: number | null;
+  judge_notes: string | null;
+  closed_at: string | null;
 }
 
-// ------------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------------
+function applyLaneResultToState(
+  base: LaneState | undefined,
+  result: LiveLaneResult,
+): LaneState {
+  return {
+    ...base,
+    lane_id: result.lane_id,
+    cumulative: result.final_value,
+    last_update_type: result.final_metric_type,
+    is_finished: true,
+    last_updated_at: result.updated_at,
+    close_reason: result.close_reason,
+    final_metric_type: result.final_metric_type,
+    final_elapsed_ms: result.final_elapsed_ms,
+    judge_notes: result.judge_notes,
+    closed_at: result.closed_at,
+  };
+}
 
-function buildLaneStates(updates: LiveUpdate[]): Record<string, LaneState> {
+function buildLaneStates(
+  updates: LiveUpdate[],
+  results: LiveLaneResult[],
+): Record<string, LaneState> {
   const states: Record<string, LaneState> = {};
 
-  // updates are ordered by created_at asc, so the last one per lane wins
-  for (const u of updates) {
-    states[u.lane_id] = {
-      lane_id: u.lane_id,
-      cumulative: u.cumulative,
-      last_update_type: u.update_type,
-      is_finished: u.update_type === "finished",
-      last_updated_at: u.created_at,
+  for (const update of updates) {
+    states[update.lane_id] = {
+      lane_id: update.lane_id,
+      cumulative: update.cumulative,
+      last_update_type: update.update_type,
+      is_finished: false,
+      last_updated_at: update.created_at,
+      close_reason: null,
+      final_metric_type: null,
+      final_elapsed_ms: null,
+      judge_notes: null,
+      closed_at: null,
     };
+  }
+
+  for (const result of results) {
+    states[result.lane_id] = applyLaneResultToState(states[result.lane_id], result);
   }
 
   return states;
 }
 
-function applyUpdate(
+function applyLiveUpdate(
   prev: Record<string, LaneState>,
   update: LiveUpdate,
 ): Record<string, LaneState> {
+  const existing = prev[update.lane_id];
+  if (existing?.close_reason) {
+    return prev;
+  }
+
   return {
     ...prev,
     [update.lane_id]: {
       lane_id: update.lane_id,
       cumulative: update.cumulative,
       last_update_type: update.update_type,
-      is_finished: update.update_type === "finished",
+      is_finished: false,
       last_updated_at: update.created_at,
+      close_reason: null,
+      final_metric_type: null,
+      final_elapsed_ms: null,
+      judge_notes: null,
+      closed_at: null,
     },
   };
 }
 
-// ------------------------------------------------------------------
-// Hook
-// ------------------------------------------------------------------
+function applyLaneResult(
+  prev: Record<string, LaneState>,
+  result: LiveLaneResult,
+): Record<string, LaneState> {
+  return {
+    ...prev,
+    [result.lane_id]: applyLaneResultToState(prev[result.lane_id], result),
+  };
+}
 
-export function useRealtimeHeat(heatId: string): {
+export function useRealtimeHeat(
+  heatId: string,
+  initialHeatStatus?: string,
+): {
   laneStates: Record<string, LaneState>;
   isConnected: boolean;
   lastUpdate: LiveUpdate | null;
+  heatStatus: string;
 } {
   const supabaseRef = useRef(createClient());
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -70,31 +122,55 @@ export function useRealtimeHeat(heatId: string): {
   const [laneStates, setLaneStates] = useState<Record<string, LaneState>>({});
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<LiveUpdate | null>(null);
+  const [heatStatus, setHeatStatus] = useState(initialHeatStatus ?? "pending");
 
-  // ---- Fetch full state from DB ----
   const fetchFullState = useCallback(async () => {
-    const { data, error } = await supabaseRef.current
-      .from("live_updates")
-      .select("*")
-      .eq("heat_id", heatId)
-      .order("created_at", { ascending: true });
+    const [{ data: updates, error: updatesError }, { data: results, error: resultsError }, { data: heat, error: heatError }] =
+      await Promise.all([
+        supabaseRef.current
+          .from("live_updates")
+          .select("*")
+          .eq("heat_id", heatId)
+          .order("created_at", { ascending: true }),
+        supabaseRef.current
+          .from("live_lane_results")
+          .select("*")
+          .eq("heat_id", heatId),
+        supabaseRef.current
+          .from("heats")
+          .select("status")
+          .eq("id", heatId)
+          .maybeSingle(),
+      ]);
 
-    if (error) {
-      console.error("[useRealtimeHeat] fetch error:", error.message);
+    if (updatesError) {
+      console.error("[useRealtimeHeat] updates fetch error:", updatesError.message);
       return;
     }
 
-    const updates = data as LiveUpdate[];
-    setLaneStates(buildLaneStates(updates));
-
-    if (updates.length > 0) {
-      setLastUpdate(updates[updates.length - 1]);
+    if (resultsError) {
+      console.error("[useRealtimeHeat] results fetch error:", resultsError.message);
+      return;
     }
-  }, [heatId]);
 
-  // ---- Polling fallback ----
+    if (heatError) {
+      console.error("[useRealtimeHeat] heat fetch error:", heatError.message);
+      return;
+    }
+
+    const liveUpdates = (updates ?? []) as LiveUpdate[];
+    const liveResults = (results ?? []) as LiveLaneResult[];
+
+    setLaneStates(buildLaneStates(liveUpdates, liveResults));
+    setHeatStatus(heat?.status ?? initialHeatStatus ?? "pending");
+
+    if (liveUpdates.length > 0) {
+      setLastUpdate(liveUpdates[liveUpdates.length - 1]);
+    }
+  }, [heatId, initialHeatStatus]);
+
   const startPolling = useCallback(() => {
-    if (pollingRef.current) return; // already polling
+    if (pollingRef.current) return;
     pollingRef.current = setInterval(() => {
       fetchFullState();
     }, 3000);
@@ -107,14 +183,12 @@ export function useRealtimeHeat(heatId: string): {
     }
   }, []);
 
-  // ---- Main effect ----
   useEffect(() => {
     const supabase = supabaseRef.current;
+    const initialFetchTimer = setTimeout(() => {
+      void fetchFullState();
+    }, 0);
 
-    // Initial fetch
-    fetchFullState();
-
-    // Subscribe to realtime
     const channel = supabase
       .channel(`live-heat-${heatId}`)
       .on<LiveUpdate>(
@@ -127,15 +201,43 @@ export function useRealtimeHeat(heatId: string): {
         },
         (payload) => {
           const update = payload.new as LiveUpdate;
-          setLaneStates((prev) => applyUpdate(prev, update));
+          setLaneStates((prev) => applyLiveUpdate(prev, update));
           setLastUpdate(update);
+        },
+      )
+      .on<LiveLaneResult>(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "live_lane_results",
+          filter: `heat_id=eq.${heatId}`,
+        },
+        (payload) => {
+          const result = payload.new as LiveLaneResult;
+          if (!result) return;
+          setLaneStates((prev) => applyLaneResult(prev, result));
+        },
+      )
+      .on<{ status: string }>(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "heats",
+          filter: `id=eq.${heatId}`,
+        },
+        (payload) => {
+          const updatedHeat = payload.new as { status: string };
+          if (updatedHeat?.status) {
+            setHeatStatus(updatedHeat.status);
+          }
         },
       )
       .subscribe((status, err) => {
         if (status === "SUBSCRIBED") {
           setIsConnected(true);
           stopPolling();
-          // Re-fetch to close any gap between initial fetch and subscription
           fetchFullState();
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           console.warn(
@@ -151,8 +253,8 @@ export function useRealtimeHeat(heatId: string): {
 
     channelRef.current = channel;
 
-    // Cleanup
     return () => {
+      clearTimeout(initialFetchTimer);
       stopPolling();
       supabase.removeChannel(channel);
       channelRef.current = null;
@@ -160,5 +262,5 @@ export function useRealtimeHeat(heatId: string): {
     };
   }, [heatId, fetchFullState, startPolling, stopPolling]);
 
-  return { laneStates, isConnected, lastUpdate };
+  return { laneStates, isConnected, lastUpdate, heatStatus };
 }

@@ -46,7 +46,7 @@ Y si tienes capacidad de validacion:
 - `/admin/equipos`: gestionar equipos, atletas y conversiones
 - `/admin/personas`: revisar personas, enlazar e invitar cuando toca
 - `/admin/wods`: mantener pruebas y stages
-- `/admin/heats`: preparar heats y controlar operativa live
+- `/admin/heats`: preparar heats, controlar operativa live y cerrar el heat sabiendo que las calles abiertas se autocerraran con su ultimo valor
 - `/admin/puntuaciones`: revisar puntuaciones del evento
 - `/admin/voluntarios`: revisar solicitudes, operativos y asignaciones
 - `/admin/streaming`: mantener el directo publico util y visible
@@ -104,6 +104,7 @@ Entra aqui cuando necesites:
 
 - ordenar heats
 - controlar que esta operativo
+- cerrar heats sin perder el ultimo estado provisional de las calles abiertas
 - preparar el terreno para el panel de voluntario
 
 ## Si algo no cuadra

@@ -252,6 +252,13 @@ Mapa rapido:
 
 Si un boton hace algo importante, casi siempre termina en uno de estos archivos.
 
+Pista util para live:
+
+- `src/lib/actions/live-updates.ts` maneja el stream provisional
+- `src/lib/actions/heats.ts` resuelve cierres operativos de heat
+- `src/lib/live-results-server.ts` centraliza cierres provisionales y snapshots
+- `src/lib/live-scoring.ts` concentra helpers de metricas, cap y tiempos
+
 ## 9. Si quieres tocar roles, accesos o nombres de panel
 
 Empieza por:
@@ -305,7 +312,16 @@ Ve a:
 Ve a:
 
 - `src/lib/actions/live-updates.ts`
+- `src/lib/actions/heats.ts`
 - `src/lib/actions/scores.ts`
+- `src/lib/live-results-server.ts`
+
+Regla importante desde esta fase:
+
+- `live_updates` ya no es toda la historia
+- `live_checkpoints` guarda parciales manuales
+- `live_lane_results` guarda el cierre provisional por calle
+- si algo falla en finalizacion, cap o notas del juez, casi seguro el rastro bueno esta en esas piezas
 
 ### Validacion oficial
 

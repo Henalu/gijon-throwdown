@@ -58,6 +58,9 @@ Primary schema objects:
 - `heats`, `lanes`
 - `heats.is_live_entry_enabled`: operational gate for live entry
 - `live_updates`: append-only realtime scoring stream
+- `live_checkpoints`: optional manual partials captured during a heat
+- `live_lane_results`: provisional lane closure state with close reason,
+  final value/metric, optional final elapsed time, and judge notes
 - `scores`: official result layer with `verified_by`, `verified_at`, `is_published`
 - `sponsors`, `sponsor_slots`
 - `volunteer_assignments`
@@ -69,7 +72,7 @@ Important SQL-side behavior:
 - `leaderboard` is a SQL view from `supabase/migrations/003_functions.sql`
 - `supabase/migrations/011_harden_auth_user_bootstrap.sql` hardens
   `auth.users -> profiles` bootstrap and auto-links/creates `people`
-- realtime is enabled for `live_updates` and `heats`
+- realtime is enabled for `live_updates`, `live_lane_results`, and `heats`
 
 ## People Registry Direction
 
@@ -178,10 +181,16 @@ Recommended result lifecycle:
 - Leaderboard page reads directly from SQL view `leaderboard`.
 - Volunteer UI now checks heat operability before writing live updates and only exposes assigned/live-enabled heats.
 - Volunteer dashboard now adds category/search filtering and can match category, workout, heat label, and team names.
+- Volunteer heat entry now supports:
+  optional manual checkpoints in any WOD,
+  provisional lane closure with judge notes,
+  and automatic heat/lane closure at time cap so normal live editing stops when the cap is reached.
 - Admin panel can create/update/delete most event entities, enable/disable live entry per heat,
   manage internal users as superadmin, route official score review through `/admin/validacion`,
   review volunteer/team public submissions, convert them into real people/entities,
   and inspect canonical people records through `/admin/personas`.
+- Validation detail now surfaces lane closure reason, final elapsed time, judge notes,
+  and recent partial checkpoints before the official score is validated.
 - Admin can now also:
   manage `athletes` inside `/admin/equipos`,
   manage `workout_stages` inside `/admin/wods`,

@@ -27,3 +27,9 @@ Cada archivo responde a la pregunta:
 ## Frase corta para recordar
 
 > No todo el mundo entra a la misma web para hacer lo mismo, y eso aqui no es un defecto: es precisamente lo que evita que el evento acabe funcionando con fe, cafe y mensajes cruzados.
+
+## Nota operativa nueva sobre live
+
+- el live ya permite guardar parciales opcionales en cualquier WOD
+- cuando una calle se cierra, se puede dejar observacion para validacion
+- si el heat alcanza el cap, la edicion live normal se bloquea y el sistema cierra lo que siga abierto

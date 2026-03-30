@@ -123,6 +123,18 @@ This batch is considered done:
 - the public shell and home page now acknowledge the gallery as part of the
   event product, not as hidden admin-only data
 
+## Phase 9 Closed
+
+This batch is considered done:
+
+- `012_live_lane_results_and_checkpoints.sql` introduced
+  `live_checkpoints` and `live_lane_results`
+- volunteer/judge heat entry now supports optional manual checkpoints for any WOD
+- lane closure now stores close reason, final value, final elapsed time, and judge notes
+- reaching the time cap now auto-closes open lanes, freezes live scoring, and preserves the latest cumulative value
+- `finalizeHeat` now prefers provisional lane closures over raw `live_updates`
+- `/admin/validacion` now surfaces judge notes and recent checkpoints for faster official review
+
 ## Next Technical Phase
 
 This is the next block an agent can implement inside the repo.
@@ -169,7 +181,7 @@ This is the most practical closing sequence from the current repo state.
 
 ### 4. Production Rollout And Smoke Pass
 
-- Apply migrations `005` through `011`
+- Apply migrations `005` through `012`
 - Promote the first real `superadmin`
 - Verify invite emails and `NEXT_PUBLIC_SITE_URL`
 - Verify password recovery emails and `/auth/reset-password`

@@ -34,6 +34,15 @@ export type LiveUpdateType =
   | "finished"
   | "no_rep";
 
+export type LiveMetricType =
+  | "reps"
+  | "calories"
+  | "weight"
+  | "rounds"
+  | "points";
+
+export type LiveLaneCloseReason = "completed" | "time_cap" | "manual";
+
 // ============================================================
 // Table Types
 // ============================================================
@@ -183,6 +192,31 @@ export interface LiveUpdate {
   update_type: LiveUpdateType;
   value: number;
   cumulative: number;
+  submitted_by: string;
+  created_at: string;
+}
+
+export interface LiveLaneResult {
+  id: string;
+  heat_id: string;
+  lane_id: string;
+  close_reason: LiveLaneCloseReason;
+  final_value: number;
+  final_metric_type: LiveMetricType;
+  final_elapsed_ms: number | null;
+  judge_notes: string | null;
+  closed_by: string;
+  closed_at: string;
+  updated_at: string;
+}
+
+export interface LiveCheckpoint {
+  id: string;
+  heat_id: string;
+  lane_id: string;
+  value: number;
+  metric_type: LiveMetricType;
+  elapsed_ms: number | null;
   submitted_by: string;
   created_at: string;
 }

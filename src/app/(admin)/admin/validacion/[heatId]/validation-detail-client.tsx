@@ -11,6 +11,7 @@ import {
   EyeOff,
   Pencil,
   ShieldCheck,
+  StickyNote,
   Zap,
 } from "lucide-react";
 import {
@@ -31,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatElapsedMs, getPublicLaneResultLabel } from "@/lib/live-scoring";
 
 interface ScoreRow {
   id: string;
@@ -61,6 +63,10 @@ interface LiveSummaryRow {
   cumulative: number;
   last_update_type: string;
   is_finished: boolean;
+  close_reason: string | null;
+  final_metric_type: string | null;
+  final_elapsed_ms: number | null;
+  judge_notes: string | null;
 }
 
 function formatScore(score: ScoreRow): string {
@@ -198,6 +204,7 @@ export function ValidationDetailClient({
   heat,
   scores,
   liveSummary,
+  checkpointsByLane,
 }: {
   heat: {
     id: string;
@@ -212,6 +219,16 @@ export function ValidationDetailClient({
   };
   scores: ScoreRow[];
   liveSummary: LiveSummaryRow[];
+  checkpointsByLane: Record<
+    string,
+    Array<{
+      id: string;
+      value: number;
+      metric_type: string;
+      elapsed_ms: number | null;
+      created_at: string;
+    }>
+  >;
 }) {
   const router = useRouter();
   const [editingScore, setEditingScore] = useState<ScoreRow | null>(null);
@@ -395,7 +412,7 @@ export function ValidationDetailClient({
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {liveSummary.map((lane) => (
               <div
                 key={lane.lane_id}
@@ -406,7 +423,9 @@ export function ValidationDetailClient({
                     Lane {lane.lane_number}
                   </p>
                   <Badge variant="outline" className="text-xs">
-                    {lane.is_finished ? "Finalizado" : "En curso"}
+                    {lane.is_finished
+                      ? getPublicLaneResultLabel(lane.close_reason as never)
+                      : "En curso"}
                   </Badge>
                 </div>
                 <p className="mt-3 text-sm font-medium text-foreground">
@@ -416,8 +435,45 @@ export function ValidationDetailClient({
                   {lane.cumulative}
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                  {lane.last_update_type.replaceAll("_", " ")}
+                  {(lane.final_metric_type ?? lane.last_update_type).replaceAll("_", " ")}
                 </p>
+                {lane.final_elapsed_ms != null && (
+                  <p className="mt-3 text-sm font-semibold text-brand-cyan">
+                    {formatElapsedMs(lane.final_elapsed_ms)}
+                  </p>
+                )}
+                {lane.judge_notes && (
+                  <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-500/10 p-3 text-sm text-orange-200">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em]">
+                      <StickyNote size={14} />
+                      Observacion
+                    </div>
+                    <p>{lane.judge_notes}</p>
+                  </div>
+                )}
+                {(checkpointsByLane[lane.lane_id]?.length ?? 0) > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      Parciales
+                    </p>
+                    {checkpointsByLane[lane.lane_id]
+                      .slice(-3)
+                      .reverse()
+                      .map((checkpoint) => (
+                        <div
+                          key={checkpoint.id}
+                          className="flex items-center justify-between rounded-xl border border-border/50 bg-background/30 px-3 py-2 text-xs"
+                        >
+                          <span className="font-mono text-brand-cyan">
+                            {formatElapsedMs(checkpoint.elapsed_ms)}
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {checkpoint.value} {checkpoint.metric_type}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

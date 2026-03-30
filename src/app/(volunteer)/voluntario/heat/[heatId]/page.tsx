@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ScoringInterface } from "./scoring-interface";
 import { canUserOperateHeat } from "@/lib/auth/live-access";
 import { requireVolunteerSurfaceProfile } from "@/lib/auth/session";
+import type { LiveCheckpoint, LiveLaneResult, LiveMetricType } from "@/types";
 
 interface PageProps {
   params: Promise<{ heatId: string }>;
@@ -38,26 +39,90 @@ export default async function VolunteerHeatPage({ params }: PageProps) {
 
   if (!heat) redirect("/voluntario");
 
-  // Get initial live state
-  const { data: liveUpdates } = await supabase
-    .from("live_updates")
-    .select("*")
-    .eq("heat_id", heatId)
-    .order("created_at", { ascending: false });
+  const [{ data: liveUpdates }, { data: laneResults }, { data: checkpoints }] =
+    await Promise.all([
+      supabase
+        .from("live_updates")
+        .select("*")
+        .eq("heat_id", heatId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("live_lane_results")
+        .select("*")
+        .eq("heat_id", heatId),
+      supabase
+        .from("live_checkpoints")
+        .select("*")
+        .eq("heat_id", heatId)
+        .order("created_at"),
+    ]);
 
-  // Build initial lane states
-  const initialLaneStates: Record<string, { cumulative: number; is_finished: boolean; update_type: string }> = {};
+  const initialLaneStates: Record<
+    string,
+    {
+      cumulative: number;
+      is_finished: boolean;
+      update_type: string;
+      close_reason: string | null;
+      final_metric_type: LiveMetricType | null;
+      final_elapsed_ms: number | null;
+      judge_notes: string | null;
+      closed_at: string | null;
+    }
+  > = {};
   const seen = new Set<string>();
   for (const update of liveUpdates ?? []) {
     if (!seen.has(update.lane_id)) {
       seen.add(update.lane_id);
       initialLaneStates[update.lane_id] = {
         cumulative: update.cumulative,
-        is_finished: update.update_type === "finished",
+        is_finished: false,
         update_type: update.update_type,
+        close_reason: null,
+        final_metric_type: null,
+        final_elapsed_ms: null,
+        judge_notes: null,
+        closed_at: null,
       };
     }
   }
+
+  for (const result of ((laneResults ?? []) as LiveLaneResult[])) {
+    initialLaneStates[result.lane_id] = {
+      cumulative: result.final_value,
+      is_finished: true,
+      update_type: result.final_metric_type,
+      close_reason: result.close_reason,
+      final_metric_type: result.final_metric_type,
+      final_elapsed_ms: result.final_elapsed_ms,
+      judge_notes: result.judge_notes,
+      closed_at: result.closed_at,
+    };
+  }
+
+  const initialCheckpoints = ((checkpoints ?? []) as LiveCheckpoint[]).reduce<
+    Record<
+      string,
+      Array<{
+        id: string;
+        value: number;
+        metric_type: LiveMetricType;
+        elapsed_ms: number | null;
+        created_at: string;
+      }>
+    >
+  >((acc, checkpoint) => {
+    const current = acc[checkpoint.lane_id] ?? [];
+    current.push({
+      id: checkpoint.id,
+      value: checkpoint.value,
+      metric_type: checkpoint.metric_type,
+      elapsed_ms: checkpoint.elapsed_ms,
+      created_at: checkpoint.created_at,
+    });
+    acc[checkpoint.lane_id] = current;
+    return acc;
+  }, {});
 
   const lanes = (heat.lanes as unknown as Array<{
     id: string;
@@ -87,6 +152,7 @@ export default async function VolunteerHeatPage({ params }: PageProps) {
       categoryName={(heat.category as unknown as { name: string } | null)?.name ?? ""}
       lanes={lanes.sort((a, b) => a.lane_number - b.lane_number)}
       initialLaneStates={initialLaneStates}
+      initialCheckpoints={initialCheckpoints}
       userId={user.id}
     />
   );

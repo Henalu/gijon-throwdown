@@ -53,7 +53,8 @@ export default async function ValidacionPage() {
       scheduled_at,
       category:categories(name),
       workout:workouts(id, name),
-      scores(id, is_published, verified_at)
+      scores(id, is_published, verified_at),
+      live_lane_results(judge_notes)
     `)
     .eq("status", "finished")
     .order("scheduled_at", { ascending: false });
@@ -76,6 +77,9 @@ export default async function ValidacionPage() {
               verified_at: string | null;
             }>) ?? []),
           );
+          const hasJudgeNotes = ((heat.live_lane_results as Array<{
+            judge_notes: string | null;
+          }> | null) ?? []).some((lane) => Boolean(lane.judge_notes));
 
           return (
             <div
@@ -91,6 +95,14 @@ export default async function ValidacionPage() {
                     <Badge variant="outline" className={state.className}>
                       {state.label}
                     </Badge>
+                    {hasJudgeNotes && (
+                      <Badge
+                        variant="outline"
+                        className="border-orange-500/30 text-orange-500"
+                      >
+                        Observaciones juez
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {getSingleRelation(heat.category)?.name} ·{" "}

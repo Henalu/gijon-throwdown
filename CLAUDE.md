@@ -50,3 +50,7 @@ Working rules:
 - Streaming and gallery now also have real product surface:
   `/admin/streaming`, `/admin/media`, `/galeria`, `/galeria/[id]`,
   and signed media downloads through `/api/media/[id]/download`.
+- Live scoring now has an auditable provisional model:
+  `live_updates` is the granular realtime stream,
+  `live_checkpoints` stores optional manual partials for any WOD,
+  and `live_lane_results` stores lane closure, final elapsed time, and judge notes.

@@ -175,6 +175,8 @@ Es el perfil de quien esta en el barro del evento mientras el resto aun pregunta
 - localizar el heat correcto sin perderse entre bloques
 - trabajar desde movil de forma rapida
 - introducir datos provisionales en tiempo real
+- guardar parciales si hace falta dejar una foto intermedia del heat
+- cerrar una calle con observacion final cuando un equipo termina antes del cap
 - apoyar la operativa del evento en pista
 
 ### Lo que no le toca
@@ -210,6 +212,8 @@ En la UI aparece como `Panel juez`, pero tecnicamente sigue moviendose sobre la 
 
 - arbitrar y apoyar la lectura correcta del heat
 - colaborar con la entrada live para que el provisional no vaya a su aire
+- dejar parciales o una observacion final de calle cuando haga falta revision posterior
+- cerrar la calle si un equipo termina antes del cap, sabiendo que al cap el sistema bloquea la edicion normal y autocierra lo que siga abierto
 - actuar como referencia operativa en pista
 
 ### Limites importantes

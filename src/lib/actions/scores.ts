@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { canValidateScoresProfile, isAdminLikeRole } from "@/lib/auth/permissions";
 import { getCurrentSessionProfile } from "@/lib/auth/session";
+import { fetchHeatLaneResults, fetchHeatLiveContext, fetchLatestLaneSnapshots } from "@/lib/live-results-server";
+import { getDefaultLiveMetric } from "@/lib/live-scoring";
+import type { LiveLaneCloseReason, LiveMetricType, ScoreType } from "@/types";
 
 function revalidateScorePaths(heatId?: string) {
   revalidatePath("/admin/puntuaciones");
@@ -53,18 +56,9 @@ export async function finalizeHeat(
   }
 
   const supabase = await createClient();
-
-  // Fetch heat with its workout and lanes (with teams)
-  const { data: heat, error: heatError } = await supabase
-    .from("heats")
-    .select(
-      "*, workout:workouts(id, wod_type, score_type, time_cap_seconds, higher_is_better), lanes(id, team_id, team:teams(id, name))"
-    )
-    .eq("id", heatId)
-    .single();
-
-  if (heatError || !heat) {
-    return { error: heatError?.message ?? "Heat no encontrado" };
+  const heat = await fetchHeatLiveContext(supabase, heatId);
+  if (!heat || !heat.workout) {
+    return { error: "Heat no encontrado" };
   }
 
   const { data: existingScores } = await supabase
@@ -80,63 +74,124 @@ export async function finalizeHeat(
   const workout = heat.workout;
   const lanes = heat.lanes ?? [];
 
-  if (!workout) {
-    return { error: "Workout no encontrado para este heat" };
-  }
-
   if (lanes.length === 0) {
     return { error: "No hay lanes asignados a este heat" };
   }
 
-  // For each lane, get the latest live_update
+  let liveLaneResults: Awaited<ReturnType<typeof fetchHeatLaneResults>>;
+  let latestSnapshots: Awaited<ReturnType<typeof fetchLatestLaneSnapshots>>;
+
+  try {
+    liveLaneResults = await fetchHeatLaneResults(supabase, heatId);
+    latestSnapshots = await fetchLatestLaneSnapshots(
+      supabase,
+      heatId,
+      workout.score_type,
+    );
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "No se pudo leer el estado provisional del heat",
+    };
+  }
+
   const scores: {
     team_id: string;
     workout_id: string;
     heat_id: string;
     time_ms: number | null;
     reps: number | null;
+    weight_kg: number | null;
+    rounds: number | null;
+    remaining_reps: number | null;
     is_cap: boolean;
     is_published: boolean;
+    notes: string | null;
     submitted_by: string;
   }[] = [];
 
   for (const lane of lanes) {
-    // Get latest live_update for this lane
-    const { data: updates, error: updatesError } = await supabase
-      .from("live_updates")
-      .select("update_type, cumulative, created_at")
-      .eq("lane_id", lane.id)
-      .eq("heat_id", heatId)
-      .order("created_at", { ascending: false });
-
-    if (updatesError) {
-      return { error: updatesError.message };
-    }
-
-    const latestUpdate = updates?.[0] ?? null;
-    const finishedUpdate = updates?.find((u) => u.update_type === "finished");
+    const liveLaneResult = liveLaneResults[lane.id];
+    const snapshot = latestSnapshots[lane.id];
+    const defaultMetric = getDefaultLiveMetric(workout.score_type as ScoreType);
 
     let time_ms: number | null = null;
     let reps: number | null = null;
+    let weight_kg: number | null = null;
+    let rounds: number | null = null;
+    let remaining_reps: number | null = null;
     let is_cap = false;
+    const notes: string | null = liveLaneResult?.judge_notes ?? null;
 
-    if (workout.wod_type === "for_time") {
-      if (finishedUpdate && heat.started_at) {
-        // Team finished: time = difference between heat start and finish update
-        const start = new Date(heat.started_at).getTime();
-        const end = new Date(finishedUpdate.created_at).getTime();
-        time_ms = end - start;
-      } else {
-        // Team hit the time cap: record their reps and mark as capped
-        is_cap = true;
-        reps = latestUpdate?.cumulative ?? 0;
-        if (workout.time_cap_seconds) {
-          time_ms = workout.time_cap_seconds * 1000;
+    if (liveLaneResult) {
+      const finalValue = liveLaneResult.final_value;
+      const finalMetric = liveLaneResult.final_metric_type ?? defaultMetric;
+      const closeReason = liveLaneResult.close_reason as LiveLaneCloseReason;
+
+      if (workout.score_type === "time") {
+        time_ms =
+          closeReason === "time_cap" && workout.time_cap_seconds
+            ? workout.time_cap_seconds * 1000
+            : liveLaneResult.final_elapsed_ms;
+        reps = finalValue;
+        is_cap = closeReason === "time_cap";
+      } else if (workout.score_type === "weight") {
+        weight_kg = finalValue;
+      } else if (workout.score_type === "rounds_reps") {
+        if (finalMetric === "rounds") {
+          rounds = finalValue;
+          remaining_reps = 0;
+        } else {
+          rounds = 0;
+          remaining_reps = finalValue;
         }
+      } else {
+        reps = finalValue;
       }
     } else {
-      // amrap, emom, chipper, etc. -- use cumulative reps
-      reps = latestUpdate?.cumulative ?? 0;
+      const { data: updates, error: updatesError } = await supabase
+        .from("live_updates")
+        .select("update_type, cumulative, created_at")
+        .eq("lane_id", lane.id)
+        .eq("heat_id", heatId)
+        .order("created_at", { ascending: false });
+
+      if (updatesError) {
+        return { error: updatesError.message };
+      }
+
+      const latestUpdate = updates?.[0] ?? null;
+      const finishedUpdate = updates?.find((u) => u.update_type === "finished");
+
+      if (workout.wod_type === "for_time") {
+        if (finishedUpdate && heat.started_at) {
+          const start = new Date(heat.started_at).getTime();
+          const end = new Date(finishedUpdate.created_at).getTime();
+          time_ms = end - start;
+          reps = latestUpdate?.cumulative ?? 0;
+        } else {
+          is_cap = true;
+          reps = latestUpdate?.cumulative ?? 0;
+          if (workout.time_cap_seconds) {
+            time_ms = workout.time_cap_seconds * 1000;
+          }
+        }
+      } else if (workout.score_type === "weight") {
+        weight_kg = latestUpdate?.cumulative ?? 0;
+      } else if (workout.score_type === "rounds_reps") {
+        const metricType = (snapshot?.metric_type ?? defaultMetric) as LiveMetricType;
+        if (metricType === "rounds") {
+          rounds = latestUpdate?.cumulative ?? 0;
+          remaining_reps = 0;
+        } else {
+          rounds = 0;
+          remaining_reps = latestUpdate?.cumulative ?? 0;
+        }
+      } else {
+        reps = latestUpdate?.cumulative ?? 0;
+      }
     }
 
     scores.push({
@@ -145,8 +200,12 @@ export async function finalizeHeat(
       heat_id: heatId,
       time_ms,
       reps,
+      weight_kg,
+      rounds,
+      remaining_reps,
       is_cap,
       is_published: false,
+      notes,
       submitted_by: actor.user.id,
     });
   }

@@ -80,6 +80,10 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
 - La capa fotografica editorial ya no vive solo en los heroes:
   la home reparte imagen y narrativa en bloques clave para reforzar inspiracion,
   esfuerzo y ambiente de arena sin convertir toda la web en una galeria.
+- El live ya no depende solo de `live_updates`:
+  `live_checkpoints` guarda parciales manuales para cualquier WOD y
+  `live_lane_results` guarda el cierre provisional por calle con motivo,
+  tiempo final y nota del juez para que validacion pueda reconstruir el heat.
 
 ## Modelo de acceso
 
@@ -114,6 +118,9 @@ Direccion tecnica ya aplicada en esta fase:
 
 - Admin activa WODs, heats y contexto operativo disponible para el live
 - Voluntarios introducen datos provisionales en tiempo real desde un dashboard mobile first
+- El panel de voluntario/juez ya puede guardar parciales opcionales en cualquier WOD
+- Si un equipo termina antes del cap, el juez puede cerrar su calle con tiempo final y observacion
+- Si el heat alcanza el time cap, el sistema cierra automaticamente las calles abiertas, congela la edicion live y conserva el ultimo valor registrado
 - Head judge o admin validador revisa la hoja oficial, corrige si hace falta y valida el resultado final
 - El leaderboard oficial solo consolida scores validados/publicados, no cualquier cambio live
 - Las reglas de puntuacion, desempates y criterios por WOD deben ser configurables desde la plataforma
@@ -220,6 +227,7 @@ El dominio principal esta definido en `supabase/migrations/`:
 - `010_judge_profiles.sql`: preferencia de juez en voluntariado y flag persistente `profiles.is_judge`
 - `011_harden_auth_user_bootstrap.sql`: endurece `auth.users -> profiles`,
   crea/reutiliza `people` automaticamente y evita depender de metadata fragil
+- `012_live_lane_results_and_checkpoints.sql`: parciales manuales, cierre provisional por calle, notas del juez y autocierre por cap para el live
 
 Tablas principales:
 
@@ -238,6 +246,8 @@ Tablas principales:
 - `heats`
 - `lanes`
 - `live_updates`
+- `live_checkpoints`
+- `live_lane_results`
 - `scores`
 - `sponsors`
 - `sponsor_slots`

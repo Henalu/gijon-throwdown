@@ -20,12 +20,13 @@ Eso significa que llevas operativa normal de admin y, ademas, tienes la ultima p
 ## Para que sirve cada uno
 
 - `/admin/validacion`: ver que heats esperan revision oficial
-- `/admin/validacion/[heatId]`: revisar, corregir y validar el resultado antes de publicarlo
+- `/admin/validacion/[heatId]`: revisar cierres de calle, parciales, observaciones y validar el resultado antes de publicarlo
 
 ## Lo que puedes hacer
 
 - revisar resultados pendientes
 - corregir datos si hace falta
+- revisar notas del juez y parciales guardados cuando hay dudas
 - validar heats oficialmente
 - asegurar que el leaderboard solo se alimente de datos buenos
 
@@ -47,6 +48,7 @@ Eso significa que llevas operativa normal de admin y, ademas, tienes la ultima p
 ## Regla de oro
 
 - `live_updates` es provisional
+- `live_checkpoints` y `live_lane_results` son la capa provisional auditable
 - `scores` validados son oficiales
 
 Si recuerdas eso, ya evitas medio catalogo de problemas deportivos.

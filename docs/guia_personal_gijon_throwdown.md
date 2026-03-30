@@ -294,7 +294,9 @@ Admin configura evento, heats y contexto
         ->
 Voluntario mete live_updates provisionales
         ->
-Realtime alimenta la capa live
+Voluntario o juez puede guardar live_checkpoints y cerrar calle en live_lane_results
+        ->
+Realtime alimenta la capa live con stream + cierres
         ->
 Admin validador revisa y corrige
         ->
@@ -307,6 +309,13 @@ Hay dos verdades diferentes:
 
 - la verdad provisional del live
 - la verdad oficial del leaderboard
+
+Y dentro de la verdad provisional ahora hay dos niveles:
+
+- el stream granular de `live_updates`
+- la capa auditable de `live_checkpoints` y `live_lane_results`
+
+Eso permite guardar parciales, notas del juez y cierres automaticos al cap sin convertir el leaderboard en una retransmision improvisada.
 
 Si mezclas ambas sin cuidado, empiezan los dramas deportivos y la frase legendaria de:
 
@@ -413,6 +422,8 @@ las migraciones suelen ganar la pelea.
 - `heats`: series
 - `lanes`: calles
 - `live_updates`: capa provisional live
+- `live_checkpoints`: parciales manuales opcionales
+- `live_lane_results`: cierre provisional por calle
 - `scores`: capa oficial publicable
 - `volunteer_assignments`: asignaciones operativas
 - `stream_sessions`: sesiones publicas de directo y replay

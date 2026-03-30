@@ -20,7 +20,13 @@ export default async function ValidationHeatPage({ params }: PageProps) {
     `/admin/validacion/${heatId}`,
   );
 
-  const [{ data: heat }, { data: scores }, { data: liveUpdates }] =
+  const [
+    { data: heat },
+    { data: scores },
+    { data: liveUpdates },
+    { data: liveLaneResults },
+    { data: liveCheckpoints },
+  ] =
     await Promise.all([
       supabase
         .from("heats")
@@ -49,6 +55,15 @@ export default async function ValidationHeatPage({ params }: PageProps) {
         .select("lane_id, update_type, cumulative, created_at")
         .eq("heat_id", heatId)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("live_lane_results")
+        .select("*")
+        .eq("heat_id", heatId),
+      supabase
+        .from("live_checkpoints")
+        .select("id, lane_id, value, metric_type, elapsed_ms, created_at")
+        .eq("heat_id", heatId)
+        .order("created_at"),
     ]);
 
   if (!heat) {
@@ -59,11 +74,45 @@ export default async function ValidationHeatPage({ params }: PageProps) {
     string,
     { lane_id: string; update_type: string; cumulative: number; created_at: string }
   >();
+  const laneResultsByLane = new Map(
+    ((liveLaneResults ?? []) as Array<{
+      lane_id: string;
+      close_reason: string;
+      final_value: number;
+      final_metric_type: string;
+      final_elapsed_ms: number | null;
+      judge_notes: string | null;
+      closed_at: string;
+    }>).map((result) => [result.lane_id, result]),
+  );
+  const checkpointsByLane = new Map<
+    string,
+    Array<{
+      id: string;
+      value: number;
+      metric_type: string;
+      elapsed_ms: number | null;
+      created_at: string;
+    }>
+  >();
 
   for (const update of liveUpdates ?? []) {
     if (!latestByLane.has(update.lane_id)) {
       latestByLane.set(update.lane_id, update);
     }
+  }
+
+  for (const checkpoint of (liveCheckpoints ?? []) as Array<{
+    id: string;
+    lane_id: string;
+    value: number;
+    metric_type: string;
+    elapsed_ms: number | null;
+    created_at: string;
+  }>) {
+    const current = checkpointsByLane.get(checkpoint.lane_id) ?? [];
+    current.push(checkpoint);
+    checkpointsByLane.set(checkpoint.lane_id, current);
   }
 
   const liveSummary = (
@@ -77,14 +126,19 @@ export default async function ValidationHeatPage({ params }: PageProps) {
     .map((lane) => {
       const latest = latestByLane.get(lane.id);
       const team = getSingleRelation(lane.team);
+      const laneResult = laneResultsByLane.get(lane.id);
 
       return {
         lane_id: lane.id,
         lane_number: lane.lane_number,
         team_name: team?.name ?? "Sin equipo",
-        cumulative: latest?.cumulative ?? 0,
+        cumulative: laneResult?.final_value ?? latest?.cumulative ?? 0,
         last_update_type: latest?.update_type ?? "sin_datos",
-        is_finished: latest?.update_type === "finished",
+        is_finished: Boolean(laneResult),
+        close_reason: laneResult?.close_reason ?? null,
+        final_metric_type: laneResult?.final_metric_type ?? null,
+        final_elapsed_ms: laneResult?.final_elapsed_ms ?? null,
+        judge_notes: laneResult?.judge_notes ?? null,
       };
     });
 
@@ -103,6 +157,7 @@ export default async function ValidationHeatPage({ params }: PageProps) {
       }}
       scores={(scores ?? []) as never[]}
       liveSummary={liveSummary}
+      checkpointsByLane={Object.fromEntries(checkpointsByLane)}
     />
   );
 }
