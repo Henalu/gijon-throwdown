@@ -171,6 +171,10 @@ Recommended result lifecycle:
 - Public direct page now prefers a live `stream_sessions` entry before falling
   back to `event_config.stream_url`, and it surfaces recent public sessions as
   replay/archive cards.
+- Public heat live page `/live/[heatId]` now supports:
+  leaderboard-only view,
+  combined video + leaderboard view with desktop split / mobile stack,
+  and a WOD detail modal with description, standards, cap, and stages.
 - Admin dashboard on `/admin` is now a real operational hub:
   it summarizes event status, live heats, pending validation, pending public
   registrations, streaming/media state, and role-aware quick actions.

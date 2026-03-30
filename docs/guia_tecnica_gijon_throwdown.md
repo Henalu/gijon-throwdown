@@ -341,6 +341,21 @@ Si el problema es de permisos de validacion, vuelve a:
 
 - `src/lib/auth/permissions.ts`
 
+### Live publico
+
+Ve a:
+
+- `src/app/(live)/live/[heatId]/page.tsx`
+- `src/app/(live)/live/[heatId]/live-heat-view.tsx`
+- `src/lib/streaming.ts`
+
+Aqui viven ahora:
+
+- el selector de modos `leaderboard` / `video + leaderboard`
+- el embed de video en vivo con fallback a `event_config.stream_url`
+- el modal de detalle del WOD
+- y los ajustes responsive finos de la cabecera mobile del live
+
 ## 12. Si quieres tocar streaming o media
 
 ### Streaming

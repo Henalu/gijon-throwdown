@@ -98,7 +98,8 @@ This version has breaking changes - APIs, conventions, and file structure may al
 ## Feature Coverage
 
 - Implemented and usable:
-  public pages, live heat page, overlay page, volunteer scoring flow,
+  public pages, live heat page with leaderboard/split-video modes and WOD info modal,
+  overlay page, volunteer scoring flow,
   admin CRUD for event core entities, score finalization/publication,
   superadmin user management, invite/setup onboarding,
   validator dashboard, auditable live scoring with manual checkpoints for any WOD,

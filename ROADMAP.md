@@ -136,6 +136,8 @@ This batch is considered done:
 - `/admin/validacion` now surfaces judge notes and recent checkpoints for faster official review
 - `/voluntario` now gives judge profiles a desktop sidebar and a richer dashboard
   with assigned heats, active event heats, finished assigned heats, and WOD references
+- `/live/[heatId]` now supports leaderboard-only and combined video + leaderboard modes,
+  plus an in-place WOD info modal and tighter mobile header behavior
 
 ## Next Technical Phase
 

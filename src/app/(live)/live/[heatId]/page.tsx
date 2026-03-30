@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { LiveHeatView } from "./live-heat-view";
-import type { LiveLaneResult, LiveMetricType } from "@/types";
+import { getYoutubeEmbedUrl } from "@/lib/streaming";
+import type { LiveLaneResult, LiveMetricType, WorkoutStage } from "@/types";
 
 interface PageProps {
   params: Promise<{ heatId: string }>;
@@ -19,7 +20,7 @@ export default async function LiveHeatPage({ params }: PageProps) {
       status,
       started_at,
       category:categories(name),
-      workout:workouts(id, name, wod_type, score_type, time_cap_seconds),
+      workout:workouts(id, name, slug, description, standards, wod_type, score_type, time_cap_seconds),
       lanes(id, lane_number, team:teams(id, name, box_name, logo_url))
     `)
     .eq("id", heatId)
@@ -27,7 +28,24 @@ export default async function LiveHeatPage({ params }: PageProps) {
 
   if (!heat) notFound();
 
-  const [{ data: liveUpdates }, { data: laneResults }] = await Promise.all([
+  const workout = heat.workout as unknown as {
+    id: string;
+    name: string;
+    slug: string | null;
+    description: string | null;
+    standards: string | null;
+    wod_type: string;
+    score_type: string;
+    time_cap_seconds: number | null;
+  } | null;
+
+  const [
+    { data: liveUpdates },
+    { data: laneResults },
+    { data: liveSession },
+    { data: eventConfig },
+    { data: workoutStages },
+  ] = await Promise.all([
     supabase
       .from("live_updates")
       .select("*")
@@ -37,6 +55,22 @@ export default async function LiveHeatPage({ params }: PageProps) {
       .from("live_lane_results")
       .select("*")
       .eq("heat_id", heatId),
+    supabase
+      .from("stream_sessions")
+      .select("title, youtube_url")
+      .eq("is_public", true)
+      .eq("is_live", true)
+      .order("sort_order", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from("event_config").select("stream_url").single(),
+    workout?.id
+      ? supabase
+          .from("workout_stages")
+          .select("*")
+          .eq("workout_id", workout.id)
+          .order("sort_order")
+      : Promise.resolve({ data: [] as WorkoutStage[] }),
   ]);
 
   const initialLaneStates: Record<
@@ -73,19 +107,16 @@ export default async function LiveHeatPage({ params }: PageProps) {
     };
   }
 
-  const workout = heat.workout as unknown as {
-    id: string;
-    name: string;
-    wod_type: string;
-    score_type: string;
-    time_cap_seconds: number | null;
-  } | null;
-
   const lanes = (heat.lanes as unknown as Array<{
     id: string;
     lane_number: number;
     team: { id: string; name: string; box_name: string | null; logo_url: string | null } | null;
   }>) ?? [];
+
+  const streamEmbedUrl =
+    getYoutubeEmbedUrl(liveSession?.youtube_url ?? null) ||
+    getYoutubeEmbedUrl(eventConfig?.stream_url ?? null);
+  const streamTitle = liveSession?.title ?? "Emision principal";
 
   return (
     <LiveHeatView
@@ -94,9 +125,14 @@ export default async function LiveHeatPage({ params }: PageProps) {
       heatStatus={heat.status}
       heatStartedAt={heat.started_at}
       workoutName={workout?.name ?? "WOD"}
+      workoutDescription={workout?.description ?? null}
+      workoutStandards={workout?.standards ?? null}
       workoutType={workout?.wod_type ?? "for_time"}
       scoreType={workout?.score_type ?? "reps"}
       timeCap={workout?.time_cap_seconds ?? null}
+      workoutStages={(workoutStages ?? []) as WorkoutStage[]}
+      streamEmbedUrl={streamEmbedUrl}
+      streamTitle={streamTitle}
       categoryName={(heat.category as unknown as { name: string } | null)?.name ?? ""}
       lanes={lanes.sort((a, b) => a.lane_number - b.lane_number)}
       initialLaneStates={initialLaneStates}

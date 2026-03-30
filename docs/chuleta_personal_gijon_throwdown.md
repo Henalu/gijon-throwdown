@@ -30,6 +30,7 @@ La version de bolsillo para no entrar al repo con cara de "yo juraria que esto e
 - Admin: configuracion y operativa
 - Voluntario/juez: entrada live
 - Live/overlay: seguimiento y emision
+- `/live/[heatId]` ahora tiene modo leaderboard, modo combinado con video y modal de info WOD
 
 ## 4. Rutas que importan
 

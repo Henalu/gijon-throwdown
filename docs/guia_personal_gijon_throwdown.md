@@ -258,6 +258,12 @@ Estas dos superficies parecen primas, pero no hacen exactamente lo mismo.
 - `live` sirve para seguir el heat
 - `overlay` sirve para stream y realizacion
 
+Y `live` ya no va solo a una lectura:
+
+- puede quedarse en modo leaderboard puro
+- o abrir una vista combinada con video + ranking
+- y permite consultar el WOD en un modal sin abandonar el heat
+
 Es la diferencia entre:
 
 - "quiero verlo"

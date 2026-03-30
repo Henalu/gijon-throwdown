@@ -87,6 +87,9 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
   `live_checkpoints` guarda parciales manuales para cualquier WOD y
   `live_lane_results` guarda el cierre provisional por calle con motivo,
   tiempo final y nota del juez para que validacion pueda reconstruir el heat.
+- La vista publica de heat en `/live/[heatId]` ya no se limita al leaderboard:
+  ahora puede alternar entre modo ranking puro y modo combinado con video embebido
+  + leaderboard, ademas de abrir el detalle del WOD en un modal sin salir del directo.
 
 ## Modelo de acceso
 
