@@ -46,7 +46,10 @@ This version has breaking changes - APIs, conventions, and file structure may al
 
 ## Auth And Access
 
-- `src/proxy.ts` now refreshes Supabase sessions and protects `/admin`, `/voluntario`, and `/auth/setup`.
+- `src/proxy.ts` now refreshes Supabase sessions and protects `/admin` and `/voluntario`.
+- `/auth/setup` and `/auth/reset-password` now need to tolerate the first
+  post-email landing on the client side, because Supabase may finish session
+  hydration in the browser just after `/auth/callback`.
 - `/auth/callback` now needs to support both invite and recovery email flows,
   including the default Supabase email-link case that returns auth tokens in
   the URL hash on the client, and it should still be able to derive

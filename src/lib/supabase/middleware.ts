@@ -45,7 +45,6 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAdminPath = pathname.startsWith("/admin");
   const isVolunteerPath = pathname.startsWith("/voluntario");
-  const isSetupPath = pathname.startsWith("/auth/setup");
 
   const redirectToLogin = (error?: string) => {
     const url = request.nextUrl.clone();
@@ -66,7 +65,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   };
 
-  if (isAdminPath || isVolunteerPath || isSetupPath) {
+  if (isAdminPath || isVolunteerPath) {
     if (!user) {
       return redirectToLogin();
     }
@@ -74,7 +73,7 @@ export async function updateSession(request: NextRequest) {
 
   let profile: AuthProfile | null = null;
 
-  if (user && (isAdminPath || isVolunteerPath || isSetupPath)) {
+  if (user && (isAdminPath || isVolunteerPath)) {
     const { data } = await supabase
       .from("profiles")
       .select(
@@ -91,16 +90,6 @@ export async function updateSession(request: NextRequest) {
 
     if (!profile.is_active) {
       return redirectToLogin("inactive");
-    }
-  }
-
-  if (isSetupPath) {
-    if (!profile) {
-      return redirectToLogin("missing_profile");
-    }
-
-    if (profile.setup_completed_at) {
-      return redirectToApp(getDefaultRouteForRole(profile));
     }
   }
 

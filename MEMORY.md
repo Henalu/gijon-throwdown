@@ -197,6 +197,9 @@ Recommended result lifecycle:
 - When an email link arrives without an explicit next target, the callback can
   now derive the post-login destination from the authenticated profile, so
   invited users with pending setup still land in `/auth/setup`.
+- `/auth/setup` and `/auth/reset-password` now hydrate their first auth state
+  from the browser client instead of trusting SSR on that first landing, which
+  makes invite/recovery flows more resilient right after `/auth/callback`.
 - `/auth/setup` now also repairs legacy invited profiles that are missing
   `person_id` by creating or reusing the canonical `people` row first.
 - Official flow is now:

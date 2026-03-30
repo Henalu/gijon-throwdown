@@ -176,7 +176,9 @@ Ve a:
 - `src/app/auth/callback/page.tsx`
 - `src/app/auth/callback/callback-client.tsx`
 - `src/app/auth/setup/page.tsx`
+- `src/app/auth/setup/setup-page-client.tsx`
 - `src/app/auth/reset-password/page.tsx`
+- `src/app/auth/reset-password/reset-password-page-client.tsx`
 - `src/lib/actions/auth.ts`
 
 ## 6. Si quieres cambiar una tabla, filtro o cards de un modulo admin

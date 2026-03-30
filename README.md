@@ -37,6 +37,9 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
 - Las mutaciones viven en `src/lib/actions/*.ts` y usan `revalidatePath`.
 - La autenticacion y el refresco de sesion pasan por Supabase SSR.
 - La proteccion de rutas esta en `src/proxy.ts`.
+- Las pantallas de primer aterrizaje desde correo (`/auth/setup` y
+  `/auth/reset-password`) ahora validan la sesion desde cliente para soportar
+  mejor los enlaces de invitacion/recuperacion justo despues del callback.
 - El dashboard admin ya funciona como centro de mando:
   resume estado del evento, operativa live, colas pendientes y accesos rapidos
   a heats, validacion, equipos, voluntarios, streaming y media.
@@ -63,7 +66,9 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
   que devuelve Supabase en sus enlaces de email por defecto, y
   si el enlace llega sin destino explicito pero la cuenta sigue pendiente de
   activacion, el callback deriva igualmente al usuario hacia `/auth/setup`,
-  y
+  mientras que `/auth/setup` y `/auth/reset-password` consumen la sesion desde
+  cliente en el primer aterrizaje para no depender de que el SSR ya vea la
+  cookie en ese mismo instante, y
   `/auth/reset-password` permite pedir enlace nuevo o fijar la nueva
   contrasena al volver desde email.
 - La continuidad entre ediciones ya tiene base real:
