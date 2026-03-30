@@ -215,35 +215,35 @@ export default async function CuentaPage() {
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[1.4rem] bg-black/20 p-4">
+            <div className="min-w-0 overflow-hidden rounded-[1.4rem] bg-black/20 p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
                 Nombre
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">
+              <p className="mt-2 min-w-0 break-words text-lg font-semibold text-white [overflow-wrap:anywhere]">
                 {profile.full_name}
               </p>
             </div>
-            <div className="rounded-[1.4rem] bg-black/20 p-4">
+            <div className="min-w-0 overflow-hidden rounded-[1.4rem] bg-black/20 p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
                 Email
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">
+              <p className="mt-2 min-w-0 break-words text-lg font-semibold text-white [overflow-wrap:anywhere]">
                 {profile.email}
               </p>
             </div>
-            <div className="rounded-[1.4rem] bg-black/20 p-4">
+            <div className="min-w-0 overflow-hidden rounded-[1.4rem] bg-black/20 p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
                 Rol
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">
+              <p className="mt-2 min-w-0 break-words text-lg font-semibold text-white [overflow-wrap:anywhere]">
                 {getProfileRoleLabel(profile)}
               </p>
             </div>
-            <div className="rounded-[1.4rem] bg-black/20 p-4">
+            <div className="min-w-0 overflow-hidden rounded-[1.4rem] bg-black/20 p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
                 Estado
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">
+              <p className="mt-2 min-w-0 break-words text-lg font-semibold text-white [overflow-wrap:anywhere]">
                 {profile.is_active ? "Acceso activo" : "Acceso inactivo"}
               </p>
             </div>

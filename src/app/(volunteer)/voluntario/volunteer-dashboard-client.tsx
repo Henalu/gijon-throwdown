@@ -64,12 +64,14 @@ function SectionHeader({
   description?: string;
 }) {
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </h2>
       {description ? (
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
+          {description}
+        </p>
       ) : null}
     </div>
   );
@@ -96,19 +98,19 @@ function HeatCard({
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="font-bold text-foreground">
+          <p className="break-words font-bold text-foreground [overflow-wrap:anywhere]">
             {heat.workout?.name} - Heat {heat.heat_number}
           </p>
           <span className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
             {formatScheduledAt(heat.scheduled_at)}
           </span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
           {heat.category?.name}
           {heat.assignment?.notes ? ` | ${heat.assignment.notes}` : ""}
         </p>
         {heat.team_names.length > 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
             {heat.team_names.join(" | ")}
           </p>
         )}
@@ -152,13 +154,17 @@ function JudgeWorkoutCard({
     <div className="rounded-[1.4rem] border border-border bg-card p-4 transition-colors hover:border-brand-cyan/40">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-bold text-foreground">{workout.name}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="break-words text-sm font-bold text-foreground [overflow-wrap:anywhere]">
+            {workout.name}
+          </p>
+          <p className="mt-1 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
             {workout.heatCount} heat{workout.heatCount === 1 ? "" : "s"} asignado
             {workout.heatCount === 1 ? "" : "s"}
           </p>
           {categoriesLabel ? (
-            <p className="mt-2 text-xs text-muted-foreground">{categoriesLabel}</p>
+            <p className="mt-2 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
+              {categoriesLabel}
+            </p>
           ) : null}
         </div>
         <BookOpen size={18} className="text-brand-cyan" />
@@ -279,12 +285,12 @@ export function VolunteerDashboardClient({
     : filteredAssigned.length + filteredAvailable.length + filteredUnavailable.length;
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold">
+        <h1 className="break-words text-2xl font-bold [overflow-wrap:anywhere]">
           {isJudge ? "Panel juez" : "Mis Heats"}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
           {isJudge
             ? "Vista operativa para seguir tus asignaciones, el estado live del evento y los WODs que arbitras."
             : "Busca por categoria, heat, WOD o equipo y entra solo donde te toca operar."}
@@ -328,7 +334,7 @@ export function VolunteerDashboardClient({
         </div>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-[1fr_15rem_auto] md:items-center">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_15rem_auto] md:items-center">
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -352,7 +358,9 @@ export function VolunteerDashboardClient({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-sm text-muted-foreground">{totalVisible} heats visibles</p>
+        <p className="break-words text-sm text-muted-foreground [overflow-wrap:anywhere] md:text-right">
+          {totalVisible} heats visibles
+        </p>
       </div>
 
       {isJudge ? (

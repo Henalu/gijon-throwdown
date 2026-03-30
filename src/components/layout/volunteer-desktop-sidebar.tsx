@@ -39,16 +39,18 @@ export function VolunteerDesktopSidebar({
           Volver al sitio
         </Link>
 
-        <div className="mt-4 rounded-[1.4rem] border border-white/8 bg-black/20 p-4">
+        <div className="mt-4 min-w-0 overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/20 p-4">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-brand-green/80">
             {title}
           </p>
-          <p className="mt-3 text-lg font-semibold tracking-[-0.04em] text-white">
+          <p className="mt-3 min-w-0 break-words text-lg font-semibold tracking-[-0.04em] text-white [overflow-wrap:anywhere]">
             {viewer.full_name}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">{viewer.email}</p>
+          <p className="mt-1 min-w-0 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
+            {viewer.email}
+          </p>
 
-          <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <span className="rounded-full bg-brand-green/12 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-brand-green">
               {getProfileRoleLabel(viewer)}
             </span>
@@ -94,8 +96,10 @@ export function VolunteerDesktopSidebar({
                     {Icon ? <Icon size={18} /> : null}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-white">{link.label}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    <p className="break-words text-sm font-medium text-white [overflow-wrap:anywhere]">
+                      {link.label}
+                    </p>
+                    <p className="mt-1 break-words text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]">
                       {link.description}
                     </p>
                   </div>
@@ -136,8 +140,10 @@ export function VolunteerDesktopSidebar({
                     {Icon ? <Icon size={18} /> : null}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-white">{link.label}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    <p className="break-words text-sm font-medium text-white [overflow-wrap:anywhere]">
+                      {link.label}
+                    </p>
+                    <p className="mt-1 break-words text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]">
                       {link.description}
                     </p>
                   </div>
