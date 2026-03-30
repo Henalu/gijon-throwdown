@@ -515,19 +515,20 @@ export function LiveHeatView({
       </div>
 
       <Dialog open={wodInfoOpen} onOpenChange={setWodInfoOpen}>
-        <DialogContent className="max-h-[85vh] max-w-4xl overflow-hidden border border-white/10 bg-[#080b08] p-0 text-white ring-white/10">
+        <DialogContent className="max-h-[85vh] overflow-hidden border border-white/10 bg-[#080b08] p-0 text-white ring-white/10 sm:max-w-[min(92vw,42rem)] lg:max-w-[min(90vw,68rem)] xl:max-w-[min(88vw,76rem)]">
           <div className="max-h-[85vh] overflow-y-auto">
-            <div className="border-b border-white/10 px-6 py-5">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-semibold tracking-[-0.04em] text-white">
+            <div className="border-b border-white/10 px-6 py-5 lg:px-8 lg:py-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
+                <DialogHeader className="min-w-0 flex-1">
+                  <DialogTitle className="break-words text-2xl font-semibold tracking-[-0.04em] text-white lg:text-[2rem] [overflow-wrap:anywhere]">
                   {workoutName}
-                </DialogTitle>
-                <DialogDescription className="max-w-2xl text-white/58">
+                  </DialogTitle>
+                  <DialogDescription className="max-w-2xl break-words text-white/58 [overflow-wrap:anywhere]">
                   Consulta el detalle del WOD sin abandonar el live del heat.
-                </DialogDescription>
-              </DialogHeader>
+                  </DialogDescription>
+                </DialogHeader>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 lg:max-w-[22rem] lg:justify-end">
                 <Badge className="border-white/12 bg-white/[0.04] text-white/72">
                   {wodTypeLabel[workoutType] || workoutType}
                 </Badge>
@@ -539,18 +540,21 @@ export function LiveHeatView({
                     Cap {formatTimer(timeCap)}
                   </Badge>
                 ) : null}
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
-              <div className="space-y-6">
+            <div className="grid gap-6 px-6 py-6 lg:px-8 lg:py-8 xl:grid-cols-[minmax(0,0.88fr)_minmax(22rem,1.12fr)]">
+              <div className="min-w-0 space-y-6">
                 <section className="space-y-3">
                   <h3 className="text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-white/42">
                     Descripción
                   </h3>
-                  <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4 text-sm leading-7 text-white/72">
+                  <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4 text-sm leading-7 text-white/72 lg:p-5">
                     {workoutDescription ? (
-                      <p className="whitespace-pre-line">{workoutDescription}</p>
+                      <p className="whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                        {workoutDescription}
+                      </p>
                     ) : (
                       <p>No hay descripción publicada todavía para este WOD.</p>
                     )}
@@ -561,9 +565,11 @@ export function LiveHeatView({
                   <h3 className="text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-white/42">
                     Reglas y standards
                   </h3>
-                  <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4 text-sm leading-7 text-white/72">
+                  <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4 text-sm leading-7 text-white/72 lg:p-5">
                     {workoutStandards ? (
-                      <p className="whitespace-pre-line">{workoutStandards}</p>
+                      <p className="whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                        {workoutStandards}
+                      </p>
                     ) : (
                       <p>No hay standards publicados todavía para este WOD.</p>
                     )}
@@ -571,7 +577,7 @@ export function LiveHeatView({
                 </section>
               </div>
 
-              <div className="space-y-6">
+              <div className="min-w-0 space-y-6">
                 <section className="space-y-3">
                   <h3 className="text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-white/42">
                     Estructura del workout
@@ -581,23 +587,23 @@ export function LiveHeatView({
                       workoutStages.map((stage, index) => (
                         <div
                           key={stage.id}
-                          className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4"
+                          className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4 lg:p-5"
                         >
                           <div className="flex items-start gap-3">
                             <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-green/12 text-xs font-black text-brand-green">
                               {index + 1}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-white">
+                              <p className="break-words text-sm font-semibold text-white [overflow-wrap:anywhere]">
                                 {stage.name}
                               </p>
                               {formatStageTarget(stage) ? (
-                                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-brand-green/82">
+                                <p className="mt-1 break-words text-xs uppercase tracking-[0.18em] text-brand-green/82 [overflow-wrap:anywhere]">
                                   {formatStageTarget(stage)}
                                 </p>
                               ) : null}
                               {stage.description ? (
-                                <p className="mt-2 text-sm leading-6 text-white/64">
+                                <p className="mt-2 break-words text-sm leading-6 text-white/64 [overflow-wrap:anywhere]">
                                   {stage.description}
                                 </p>
                               ) : null}
