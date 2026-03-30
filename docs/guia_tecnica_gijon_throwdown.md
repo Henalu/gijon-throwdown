@@ -97,6 +97,7 @@ Si quieres tocar el render:
 
 - `src/components/layout/admin-sidebar.tsx`
 - `src/components/layout/protected-mobile-nav.tsx`
+- `src/components/layout/volunteer-desktop-sidebar.tsx`
 
 ### Autoenfoque y scroll del menu movil
 
@@ -306,6 +307,12 @@ Ve a:
 - `src/app/(volunteer)/voluntario/page.tsx`
 - `src/app/(volunteer)/voluntario/volunteer-dashboard-client.tsx`
 - `src/app/(volunteer)/voluntario/heat/[heatId]/page.tsx`
+- `src/app/(volunteer)/layout.tsx`
+
+Si el problema es de navegacion desktop del juez:
+
+- `src/components/layout/volunteer-desktop-sidebar.tsx`
+- `src/app/(volunteer)/layout.tsx`
 
 ### Mutaciones live
 

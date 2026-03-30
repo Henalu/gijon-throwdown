@@ -46,6 +46,9 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
 - Las superficies protegidas ya tienen navegacion movil propia:
   `admin` y `voluntario` muestran cabecera con menu overlay en movil para no
   dejar al usuario atrapado dentro de la operativa.
+- El panel de juez ya no se queda cojo en escritorio:
+  `/voluntario` puede renderizar una sidebar desktop especifica para perfiles
+  `is_judge`, con los mismos accesos base que el menu movil y mas contexto operativo.
 - El shell publico ya es auth-aware:
   carga sesion/perfil en servidor y adapta navbar y overlay movil al rol activo.
   En desktop, la barra mantiene la navegacion publica visible y agrupa los
@@ -121,6 +124,7 @@ Direccion tecnica ya aplicada en esta fase:
 - El panel de voluntario/juez ya puede guardar parciales opcionales en cualquier WOD
 - Si un equipo termina antes del cap, el juez puede cerrar su calle con tiempo final y observacion
 - Si el heat alcanza el time cap, el sistema cierra automaticamente las calles abiertas, congela la edicion live y conserva el ultimo valor registrado
+- El dashboard del juez ya separa heats asignados, heats activos del evento, heats finalizados propios y WODs de referencia con acceso a standards
 - Head judge o admin validador revisa la hoja oficial, corrige si hace falta y valida el resultado final
 - El leaderboard oficial solo consolida scores validados/publicados, no cualquier cambio live
 - Las reglas de puntuacion, desempates y criterios por WOD deben ser configurables desde la plataforma

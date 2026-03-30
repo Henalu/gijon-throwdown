@@ -205,7 +205,7 @@ En la UI aparece como `Panel juez`, pero tecnicamente sigue moviendose sobre la 
 
 ### Que hace desde cada uno
 
-- `/voluntario`: encontrar heats asignados o accesibles y ver rapido donde hay trabajo real
+- `/voluntario`: encontrar heats asignados o accesibles, ver heats activos del evento, revisar heats finalizados propios y abrir WODs de referencia si necesita standards
 - `/voluntario/heat/[heatId]`: seguir el heat, apoyar decisiones de arbitraje y mantener coherencia con la operativa live
 
 ### Funciones principales

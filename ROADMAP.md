@@ -134,6 +134,8 @@ This batch is considered done:
 - reaching the time cap now auto-closes open lanes, freezes live scoring, and preserves the latest cumulative value
 - `finalizeHeat` now prefers provisional lane closures over raw `live_updates`
 - `/admin/validacion` now surfaces judge notes and recent checkpoints for faster official review
+- `/voluntario` now gives judge profiles a desktop sidebar and a richer dashboard
+  with assigned heats, active event heats, finished assigned heats, and WOD references
 
 ## Next Technical Phase
 

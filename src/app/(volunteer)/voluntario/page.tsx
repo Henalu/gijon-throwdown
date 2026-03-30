@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getVolunteerHeatBuckets } from "@/lib/auth/live-access";
+import { isJudgeProfile } from "@/lib/auth/permissions";
 import { requireVolunteerSurfaceProfile } from "@/lib/auth/session";
 import { VolunteerDashboardClient } from "./volunteer-dashboard-client";
 
@@ -17,6 +18,7 @@ export default async function VoluntarioHomePage() {
       assigned={assigned}
       available={available}
       unavailable={unavailable}
+      isJudge={isJudgeProfile(profile)}
     />
   );
 }

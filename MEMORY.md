@@ -181,6 +181,9 @@ Recommended result lifecycle:
 - Leaderboard page reads directly from SQL view `leaderboard`.
 - Volunteer UI now checks heat operability before writing live updates and only exposes assigned/live-enabled heats.
 - Volunteer dashboard now adds category/search filtering and can match category, workout, heat label, and team names.
+- Judge profiles now get a stronger desktop experience inside `/voluntario`:
+  sidebar navigation, grouped operational sections, and direct links to WOD standards
+  for assigned heats.
 - Volunteer heat entry now supports:
   optional manual checkpoints in any WOD,
   provisional lane closure with judge notes,

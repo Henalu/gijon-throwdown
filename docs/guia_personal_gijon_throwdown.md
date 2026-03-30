@@ -233,6 +233,7 @@ La idea es:
 - filtrar bien
 - entrar al heat correcto
 - meter datos sin pelearte con la interfaz
+- y, si eres juez, tener en desktop una capa de navegacion y contexto que no te deje medio ciego frente al panel movil
 
 Y aqui entra una matizacion importante:
 

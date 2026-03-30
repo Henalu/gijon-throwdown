@@ -21,7 +21,7 @@ No para publicar resultados oficiales por inspiracion divina.
 
 ## Para que sirve cada uno
 
-- `/voluntario`: encontrar rapido los heats donde tienes que trabajar
+- `/voluntario`: encontrar rapido los heats donde tienes que trabajar, ver el contexto activo del evento y abrir los WODs de referencia desde desktop
 - `/voluntario/heat/[heatId]`: seguir el heat y apoyar el criterio de arbitraje
 
 ## Lo que puedes hacer
@@ -31,6 +31,7 @@ No para publicar resultados oficiales por inspiracion divina.
 - ayudar a que la entrada live tenga sentido
 - guardar parciales cuando conviene dejar un punto de control
 - cerrar una calle al terminar antes del cap y dejar observacion para validacion
+- usar el dashboard desktop para ver asignados, activos globales, finalizados propios y standards del WOD
 - colaborar con voluntariado y operativa
 
 ## Lo que no te toca

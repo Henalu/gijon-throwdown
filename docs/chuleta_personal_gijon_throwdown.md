@@ -140,6 +140,7 @@ Si recuerdas esto, ya evitas una cantidad preciosa de confusion.
 
 - shell publico auth-aware
 - navegacion movil propia para admin y voluntario
+- sidebar desktop especifica para juez dentro de `/voluntario`
 - dashboard admin como centro de mando
 - scoring live de voluntario
 - validacion oficial

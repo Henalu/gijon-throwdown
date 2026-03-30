@@ -2,6 +2,7 @@ import {
   ProtectedMobileNav,
   type ProtectedMobileNavLink,
 } from "@/components/layout/protected-mobile-nav";
+import { VolunteerDesktopSidebar } from "@/components/layout/volunteer-desktop-sidebar";
 import {
   getPanelTitle,
   getProfileRoleLabel,
@@ -23,6 +24,7 @@ export default async function VolunteerLayout({
       description: isJudgeProfile(profile)
         ? "Heats asignados, arbitraje en pista y acceso rapido al live."
         : "Heats asignados, disponibles y acceso rapido al live.",
+      icon: "layoutDashboard" as const,
     },
   ];
   const siteLinks: ProtectedMobileNavLink[] = [
@@ -61,16 +63,32 @@ export default async function VolunteerLayout({
         siteLinks={siteLinks}
       />
 
-      <header className="sticky top-0 z-50 hidden h-14 items-center border-b border-border bg-background/80 px-4 backdrop-blur-md md:flex">
-        <span className="text-sm font-bold uppercase tracking-tight">
-          <span className="text-white">GT</span>
-          <span className="text-brand-green"> {getProfileRoleLabel(profile)}</span>
-        </span>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {profile.full_name}
-        </span>
-      </header>
-      <main className="p-4 pb-8">{children}</main>
+      {isJudgeProfile(profile) ? (
+        <div className="flex min-h-[calc(100vh-3.5rem)] md:min-h-screen">
+          <VolunteerDesktopSidebar
+            title={panelTitle}
+            viewer={profile}
+            primaryLinks={volunteerLinks}
+            siteLinks={siteLinks}
+          />
+          <main className="min-w-0 flex-1 overflow-auto p-4 pb-8 sm:p-6 md:p-8">
+            {children}
+          </main>
+        </div>
+      ) : (
+        <>
+          <header className="sticky top-0 z-50 hidden h-14 items-center border-b border-border bg-background/80 px-4 backdrop-blur-md md:flex">
+            <span className="text-sm font-bold uppercase tracking-tight">
+              <span className="text-white">GT</span>
+              <span className="text-brand-green"> {getProfileRoleLabel(profile)}</span>
+            </span>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {profile.full_name}
+            </span>
+          </header>
+          <main className="p-4 pb-8">{children}</main>
+        </>
+      )}
     </div>
   );
 }

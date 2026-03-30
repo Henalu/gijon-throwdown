@@ -34,6 +34,9 @@ Working rules:
   instead of stretching the top bar with too many links.
 - Internal mobile UX is no longer a dead end:
   `admin` and `voluntario` now have their own mobile header + overlay menu.
+- Judge UX in `/voluntario` is now intentionally asymmetric:
+  judges can get a richer desktop sidebar/dashboard while regular volunteers
+  keep the lighter operational surface.
 - Desktop footer is no longer a duplicate navigation area:
   it now prioritizes internal legal pages and community/social access.
 - The people registry foundation already exists:

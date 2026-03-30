@@ -17,6 +17,9 @@ This version has breaking changes - APIs, conventions, and file structure may al
 - Protected `admin` and `voluntario` surfaces now also expose dedicated mobile
   navigation overlays so internal users can keep moving through the app on
   small screens.
+- Judge-oriented volunteer UX now also has a desktop counterpart:
+  `/voluntario` can render a dedicated judge sidebar plus a richer judge dashboard
+  while non-judge volunteers keep the lighter workflow.
 - Product direction now adds two clearer operating layers on top of that base:
   athlete/public consumption and head-judge validation of official results.
 - Current repo is still single-event, but it now also includes a first `people`
@@ -103,7 +106,8 @@ This version has breaking changes - APIs, conventions, and file structure may al
   auth-aware public shell, `/cuenta`, pending public registration capture/review,
   people registry foundation, admin conversion flows, people-level admin review/invite tools,
   athlete CRUD, workout-stage CRUD, volunteer-assignment UI, athlete invites after team conversion,
-  a filterable volunteer dashboard, an editorial photo layer on the public heroes,
+  a filterable volunteer dashboard, a richer desktop judge dashboard/sidebar,
+  an editorial photo layer on the public heroes,
   first continuity/history support through `event_editions` and `edition_participations`,
   public stream-session surfaces in `/directo`,
   gallery upload/consumption through `/admin/media`, `/galeria`, and `/galeria/[id]`,

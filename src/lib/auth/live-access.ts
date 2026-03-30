@@ -12,7 +12,7 @@ export interface VolunteerHeatCard {
   is_live_entry_enabled: boolean;
   team_names: string[];
   category: { name: string } | null;
-  workout: { name: string } | null;
+  workout: { name: string; slug: string | null } | null;
   assignment: {
     id: string;
     notes: string | null;
@@ -112,7 +112,7 @@ export async function getVolunteerHeatBuckets(params: {
           scheduled_at,
           is_live_entry_enabled,
           category:categories(name),
-          workout:workouts(name)
+          workout:workouts(name, slug)
         )
       `)
       .eq("volunteer_id", userId)
@@ -126,7 +126,7 @@ export async function getVolunteerHeatBuckets(params: {
         scheduled_at,
         is_live_entry_enabled,
         category:categories(name),
-        workout:workouts(name)
+        workout:workouts(name, slug)
       `)
       .eq("status", "active")
       .order("scheduled_at"),
@@ -195,7 +195,10 @@ export async function getVolunteerHeatBuckets(params: {
       "assignment"
     > & {
       category: { name: string }[] | { name: string } | null;
-      workout: { name: string }[] | { name: string } | null;
+      workout:
+        | { name: string; slug: string | null }[]
+        | { name: string; slug: string | null }
+        | null;
     };
 
     return {
