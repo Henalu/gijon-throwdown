@@ -331,6 +331,31 @@ export async function reviewVolunteerApplication(input: {
   const status = parsed.data.status;
   const now = new Date().toISOString();
   const adminClient = createAdminClient();
+  const { data: existingApplication, error: existingApplicationError } =
+    await adminClient
+      .from("volunteer_applications")
+      .select("id, status, converted_person_id, converted_profile_id")
+      .eq("id", parsed.data.id)
+      .maybeSingle();
+
+  if (existingApplicationError) {
+    return { error: existingApplicationError.message };
+  }
+
+  if (!existingApplication) {
+    return { error: "Solicitud no encontrada" };
+  }
+
+  if (
+    (existingApplication.converted_person_id ||
+      existingApplication.converted_profile_id) &&
+    status !== existingApplication.status
+  ) {
+    return {
+      error:
+        "La solicitud ya fue convertida y no puede volver a revision desde este panel",
+    };
+  }
 
   const { error } = await adminClient
     .from("volunteer_applications")
@@ -369,6 +394,30 @@ export async function reviewTeamRegistration(input: {
   const status = parsed.data.status;
   const now = new Date().toISOString();
   const adminClient = createAdminClient();
+  const { data: existingRegistration, error: existingRegistrationError } =
+    await adminClient
+      .from("team_registrations")
+      .select("id, status, converted_team_id")
+      .eq("id", parsed.data.id)
+      .maybeSingle();
+
+  if (existingRegistrationError) {
+    return { error: existingRegistrationError.message };
+  }
+
+  if (!existingRegistration) {
+    return { error: "Preinscripcion no encontrada" };
+  }
+
+  if (
+    existingRegistration.converted_team_id &&
+    status !== existingRegistration.status
+  ) {
+    return {
+      error:
+        "La preinscripcion ya fue convertida y no puede volver a revision desde este panel",
+    };
+  }
 
   const { error } = await adminClient
     .from("team_registrations")

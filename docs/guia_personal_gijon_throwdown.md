@@ -279,7 +279,8 @@ Y ademas el alta auth ya esta mas blindada:
 - un nuevo `auth.users` intenta crear o reutilizar su `people`
 - las invitaciones del producto detectan antes si esa persona ya tenia cuenta
 - `/auth/setup` puede reparar perfiles invitados antiguos si aun no traian `person_id`
-- `/auth/callback` ya acepta tanto invitaciones como recuperaciones de contrasena
+- `/auth/callback` ya acepta invitaciones y recuperaciones de contrasena,
+  incluso cuando Supabase devuelve la sesion en el hash del URL
 - `/auth/reset-password` permite pedir enlace nuevo o fijar una nueva contrasena
 
 Esto importa mucho porque evita el clasico pecado de meter toda la identidad de una persona en un solo cajon y luego descubrir que no cabia.

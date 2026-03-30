@@ -173,7 +173,8 @@ Ve a:
 Ve a:
 
 - `src/app/auth/login/page.tsx`
-- `src/app/auth/callback/route.ts`
+- `src/app/auth/callback/page.tsx`
+- `src/app/auth/callback/callback-client.tsx`
 - `src/app/auth/setup/page.tsx`
 - `src/app/auth/reset-password/page.tsx`
 - `src/lib/actions/auth.ts`

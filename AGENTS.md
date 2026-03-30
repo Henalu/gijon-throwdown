@@ -48,7 +48,11 @@ This version has breaking changes - APIs, conventions, and file structure may al
 
 - `src/proxy.ts` now refreshes Supabase sessions and protects `/admin`, `/voluntario`, and `/auth/setup`.
 - `/auth/callback` now needs to support both invite and recovery email flows,
-  and `/auth/reset-password` is the public password recovery surface.
+  including the default Supabase email-link case that returns auth tokens in
+  the URL hash on the client, and it should still be able to derive
+  `/auth/setup` from the authenticated profile when the invite email lands
+  without an explicit next target. `/auth/reset-password` is the public
+  password recovery surface.
 - Write access is enforced primarily through Supabase RLS in `supabase/migrations/002_rls_policies.sql`.
 - The leaderboard comes from SQL objects in `supabase/migrations/003_functions.sql`.
 - Current implementation now supports:

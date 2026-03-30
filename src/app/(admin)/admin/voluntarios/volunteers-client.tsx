@@ -87,6 +87,15 @@ export function VolunteersClient({
     ),
   );
 
+  const reviewableApplications = useMemo(
+    () =>
+      applications.filter(
+        (application) =>
+          !application.converted_person_id && !application.converted_profile_id,
+      ),
+    [applications],
+  );
+
   const totals = useMemo(
     () => ({
       total: volunteers.length,
@@ -296,8 +305,8 @@ export function VolunteersClient({
         </TabsContent>
 
         <TabsContent value="solicitudes" className="space-y-4">
-          {applications.length > 0 ? (
-            applications.map((application) => {
+          {reviewableApplications.length > 0 ? (
+            reviewableApplications.map((application) => {
               const statusBadge = getStatusLabel(application.status);
 
               return (
@@ -320,14 +329,6 @@ export function VolunteersClient({
                             className="border-brand-cyan/30 text-brand-cyan"
                           >
                             Juez
-                          </Badge>
-                        )}
-                        {application.converted_person_id && (
-                          <Badge
-                            variant="outline"
-                            className="border-brand-cyan/30 text-brand-cyan"
-                          >
-                            Convertida
                           </Badge>
                         )}
                       </div>
@@ -358,20 +359,14 @@ export function VolunteersClient({
                         placeholder="Notas internas para la organizacion"
                       />
                       <div className="flex flex-wrap gap-2">
-                        {!application.converted_person_id ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => handleConvert(application.id)}
-                            disabled={isPending}
-                          >
-                            Aprobar y convertir
-                          </Button>
-                        ) : (
-                          <Button type="button" size="sm" variant="outline" disabled>
-                            Convertida
-                          </Button>
-                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleConvert(application.id)}
+                          disabled={isPending}
+                        >
+                          Aprobar y convertir
+                        </Button>
                         <Button
                           type="button"
                           size="sm"
@@ -398,7 +393,7 @@ export function VolunteersClient({
             })
           ) : (
             <p className="rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
-              No hay solicitudes publicas de voluntariado.
+              No hay solicitudes publicas de voluntariado pendientes o reabribles.
             </p>
           )}
         </TabsContent>

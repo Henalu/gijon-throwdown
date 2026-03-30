@@ -59,6 +59,8 @@ La version de bolsillo para no entrar al repo con cara de "yo juraria que esto e
 - `/auth/login`
 - `/auth/setup`
 - `/auth/reset-password`
+- `/auth/callback` ahora tambien recoge los enlaces de email de Supabase que
+  llegan con sesion en el hash del navegador
 
 ## 5. El flujo de score en una linea
 

@@ -59,8 +59,13 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
   persona ya tenia una cuenta enlazada antes de llamar a Supabase Auth.
 - El flujo de acceso ya cubre recuperacion real de contrasena:
   `/auth/callback` ahora resuelve invitaciones y recuperaciones tanto por
-  `code` como por `token_hash`, y `/auth/reset-password` permite pedir enlace
-  nuevo o fijar la nueva contrasena al volver desde email.
+  `code` como por `token_hash` o por el hash `#access_token/#refresh_token`
+  que devuelve Supabase en sus enlaces de email por defecto, y
+  si el enlace llega sin destino explicito pero la cuenta sigue pendiente de
+  activacion, el callback deriva igualmente al usuario hacia `/auth/setup`,
+  y
+  `/auth/reset-password` permite pedir enlace nuevo o fijar la nueva
+  contrasena al volver desde email.
 - La continuidad entre ediciones ya tiene base real:
   `event_editions`, `event_config.active_edition_id`,
   `teams.edition_id`, `athletes.edition_id` y `edition_participations`.
@@ -244,6 +249,14 @@ Se esperan al menos estas variables:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 
+Nota operativa importante:
+
+- `NEXT_PUBLIC_SITE_URL` debe apuntar al host real desde el que se envian los
+  correos.
+- En Supabase Auth conviene tener `Site URL` apuntando a
+  `/auth/callback` y permitir en `Redirect URLs` tanto el callback de local
+  como el de produccion.
+
 Se usan desde:
 
 - `src/lib/supabase/server.ts`
@@ -274,6 +287,7 @@ Comandos utiles:
 - `npm run lint:src`: OK
 - shell publico con sesion visible, logout y accesos contextuales por rol: OK
 - invitaciones y recuperacion de contrasena con callback auth robusto: OK
+- callback auth compatible con enlaces email por hash de Supabase: OK
 - `/cuenta`, `/registro/voluntarios` y `/registro/equipos`: OK
 - revision admin de solicitudes y preinscripciones: OK
 - people registry y conversion admin a entidades reales: OK

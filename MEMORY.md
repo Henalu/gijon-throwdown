@@ -190,9 +190,13 @@ Recommended result lifecycle:
   manage public stream sessions in `/admin/streaming`,
   and manage the event gallery in `/admin/media`.
 - Internal invited users complete onboarding in `/auth/setup` before entering protected surfaces.
-- Login now exposes password recovery, `/auth/callback` accepts both `code`
-  and `token_hash` email flows, and `/auth/reset-password` lets users request
-  a reset link or set a new password after returning from email.
+- Login now exposes password recovery, `/auth/callback` accepts `code`,
+  `token_hash`, and the default Supabase email-link hash
+  `#access_token/#refresh_token`, and `/auth/reset-password` lets users
+  request a reset link or set a new password after returning from email.
+- When an email link arrives without an explicit next target, the callback can
+  now derive the post-login destination from the authenticated profile, so
+  invited users with pending setup still land in `/auth/setup`.
 - `/auth/setup` now also repairs legacy invited profiles that are missing
   `person_id` by creating or reusing the canonical `people` row first.
 - Official flow is now:
