@@ -28,7 +28,7 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
 - Live:
   `/live/[heatId]`, `/overlay/[heatId]`
 - Auth:
-  `/auth/login`, `/auth/callback`, `/auth/setup`
+  `/auth/login`, `/auth/callback`, `/auth/setup`, `/auth/reset-password`
 
 ## Arquitectura
 
@@ -53,6 +53,14 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
 - La capa de personas ya existe:
   `people` actua como registro canonico y se enlaza con `profiles` y `athletes`
   mediante `person_id`.
+- El bootstrap de Auth ya es mas resistente:
+  `handle_new_user()` ahora puede crear o reutilizar `people` aunque falten
+  metadatos ricos, y las invitaciones del producto validan primero si la
+  persona ya tenia una cuenta enlazada antes de llamar a Supabase Auth.
+- El flujo de acceso ya cubre recuperacion real de contrasena:
+  `/auth/callback` ahora resuelve invitaciones y recuperaciones tanto por
+  `code` como por `token_hash`, y `/auth/reset-password` permite pedir enlace
+  nuevo o fijar la nueva contrasena al volver desde email.
 - La continuidad entre ediciones ya tiene base real:
   `event_editions`, `event_config.active_edition_id`,
   `teams.edition_id`, `athletes.edition_id` y `edition_participations`.
@@ -122,6 +130,8 @@ Lo que ya existe hoy:
 - `people` como ficha persistente de persona
 - `profiles.person_id` para enlazar cuentas auth con personas
 - `athletes.person_id` para enlazar identidad deportiva con personas
+- nuevas altas en `auth.users` ahora intentan quedar enlazadas a `people`
+  automaticamente, en vez de depender por completo de `person_id` en metadata
 - `event_editions` como metadata reutilizable por ano
 - `edition_participations` como primera capa de historial por edicion
 - conversion admin de:
@@ -198,6 +208,8 @@ El dominio principal esta definido en `supabase/migrations/`:
 - `008_event_editions_and_participations.sql`: edicion activa, historial base y continuidad atleta
 - `009_streaming_and_media_experience.sql`: sesiones publicas de stream, bucket privado `event-media`, galeria y metadatos de descarga/compra
 - `010_judge_profiles.sql`: preferencia de juez en voluntariado y flag persistente `profiles.is_judge`
+- `011_harden_auth_user_bootstrap.sql`: endurece `auth.users -> profiles`,
+  crea/reutiliza `people` automaticamente y evita depender de metadata fragil
 
 Tablas principales:
 
@@ -255,12 +267,13 @@ Comandos utiles:
 - `npx eslint src`
 - `npm run typecheck`
 
-## Estado verificado el 2026-03-29
+## Estado verificado el 2026-03-30
 
 - `npm run build`: OK
 - `npm run typecheck`: OK
 - `npm run lint:src`: OK
 - shell publico con sesion visible, logout y accesos contextuales por rol: OK
+- invitaciones y recuperacion de contrasena con callback auth robusto: OK
 - `/cuenta`, `/registro/voluntarios` y `/registro/equipos`: OK
 - revision admin de solicitudes y preinscripciones: OK
 - people registry y conversion admin a entidades reales: OK
@@ -282,6 +295,9 @@ Comandos utiles:
 Si quieres entender la app como propietario y no como arqueologo de commits:
 
 - `docs/guia_personal_gijon_throwdown.md`
+- `docs/guia_tecnica_gijon_throwdown.md`
+- `docs/guia_perfiles_gijon_throwdown.md`
+- `docs/guias_operativas/README.md`
 - `docs/chuleta_personal_gijon_throwdown.md`
 - `docs/photo-sources.md`
 
@@ -313,5 +329,8 @@ Mantener sincronizados cuando cambie el proyecto:
 - `ROADMAP.md`
 - `README.md`
 - `docs/guia_personal_gijon_throwdown.md`
+- `docs/guia_tecnica_gijon_throwdown.md`
+- `docs/guia_perfiles_gijon_throwdown.md`
+- `docs/guias_operativas/*.md`
 - `docs/chuleta_personal_gijon_throwdown.md`
 - `docs/photo-sources.md`

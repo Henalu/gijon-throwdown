@@ -1,294 +1,315 @@
 # Guia personal de Gijon Throwdown
 
-Una explicacion cercana, bastante practica y deliberadamente poco solemne de como funciona esta webapp, por que esta montada asi y que partes estan ya finas frente a cuales siguen claramente en obras.
+Una explicacion clara, cercana y sin ponerte a estudiar una oposicion de Next.js de como esta montada esta app, por que esta hecha asi y que partes conviene entender primero para no entrar al repo como si fuera una cueva con niebla.
 
-La idea no es que salgas de aqui sabiendo recitar todo el repo como si fueras un druida de Next.js. La idea es que entiendas el proyecto con criterio y sin sufrimiento innecesario.
+Si alguna vez has pensado:
+
+- "vale, esta web hace muchas cosas, pero quien demonios lleva el volante"
+- "quiero contexto real, no marketing con olor a README"
+- "me gustaria entender el proyecto sin sentir que he abierto un grimorio"
+
+esta guia es para ti.
 
 ## La version corta
 
 Si tuviera que resumirtelo en una frase:
 
-Gijon Throwdown es una webapp de evento que mezcla tres mundos en una sola plataforma: informacion publica, operativa en vivo y validacion de resultados.
+Gijon Throwdown es una plataforma de evento que junta web publica, operativa interna, scoring live, validacion oficial y capa de personas dentro de una sola casa.
 
-O dicho de forma mas callejera:
+O dicho de forma menos ceremonial:
 
-1. La gente entra para seguir el evento.
-2. Los voluntarios meten datos live.
-3. Admin y head judge ordenan el caos competitivo.
-4. El leaderboard oficial publica lo validado.
+1. La gente entra para mirar el evento.
+2. Los voluntarios meten datos en directo.
+3. Admin ordena el tinglado.
+4. El validador decide que resultado pasa de provisional a oficial.
+5. La clasificacion publica solo deberia mostrar lo que ya ha pasado por caja y sello.
 
-No es solo una web bonita. Tampoco es solo una herramienta interna. Es una mezcla de ambas cosas, y por eso el proyecto tiene bastante mas chicha de la que parece desde fuera.
+No es solo una web del evento.
+No es solo un panel interno.
+Es la web publica, la trastienda y el marcador, todo junto y procurando que no acaben peleandose en el mismo metro cuadrado.
 
-En escritorio, eso ahora tambien se nota en la navegacion:
-la barra superior mantiene visible la parte publica y mete los accesos internos
-del usuario dentro de un menu de cuenta, para no acabar con una coleccion de
-links peleandose entre si como si hubieran pagado entrada para el mismo metro cuadrado.
+## Que problema intenta resolver
 
-## Que es hoy, sin humo
+La mayoria de eventos pequenos y medianos acaban asi:
 
-Hoy la app ya es capaz de hacer cosas reales:
+- una web por un lado
+- un Excel con trauma por otro
+- un sistema externo para resultados
+- alguien mandando cosas por WhatsApp
+- y una persona con cara de "esto no puede seguir asi"
 
-- mostrar la web publica del evento
-- ensenar WODs, horarios, FAQ, sponsors y clasificacion
-- transmitir mejor el tono del evento con heroes fotograficos en home, directo y WODs
-- repartir mejor la fotografia en la home con bloques editoriales y no solo con una imagen arriba del todo
-- mostrar una galeria publica de fotos con descarga y compra configurable
-- incluir la capa legal basica dentro de la propia web, sin mandar al usuario fuera para privacidad, cookies o aviso legal
-- gestionar entidades clave desde admin
-- permitir scoring en vivo desde el dashboard de voluntario
-- invitar staff interno, asignar roles y completar onboarding
-- validar oficialmente resultados antes de publicarlos
-- mostrar el live heat y un overlay para stream/OBS
+Gijon Throwdown intenta evitar ese festival.
 
-Lo importante es esta idea:
+La idea del producto es:
 
-la plataforma ya tiene una verdad operativa, no es un front vacio maquillado con lorem ipsum y esperanza.
+- ofrecer una capa publica buena en movil
+- dar a organizacion una operativa real
+- separar live provisional de resultado oficial
+- dejar preparada una base de personas y continuidad entre ediciones
 
-## Que quiere llegar a ser
+Es decir:
 
-La direccion de producto ya esta bastante clara:
+menos remiendos heroicos durante el evento y mas sistema que aguante la jornada sin pedir terapia despues.
 
-- una capa publica muy buena en movil
-- una capa operativa para el evento en tiempo real
-- una capa oficial de validacion de resultados
-- una base reutilizable de personas para futuras ediciones
-- un puente temporal con WodBuster mientras no se sustituya del todo
+## Que tecnologias usa realmente
 
-Traduccion:
+No hay hechiceria rara, pero si hay decisiones muy concretas.
 
-esto va camino de ser una herramienta central del evento, no un microsite que se apaga cuando se apagan los focos.
+### 1. Next.js 16
 
-## La idea importante: mobile first no significa "responsive y ya"
+La app usa `Next.js 16.2.1` con App Router.
 
-Esta es probablemente la decision de producto mas importante que ya esta tomada.
+Se usa porque el proyecto necesita mezclar:
 
-La app no debe pensarse como:
+- paginas publicas con SEO
+- paneles protegidos
+- layouts por superficie
+- datos en servidor
+- interactividad puntual en cliente
 
-- una web desktop que luego se adapta
+O sea:
 
-Debe pensarse como:
+Next aqui no esta para quedar moderno. Esta porque hace bastante bien de recepcionista, jefe de planta y coordinador de trafico a la vez.
 
-- una interfaz de evento que nace para movil y luego escala a desktop
+Nota importante:
 
-Por eso la fase actual ha metido mano en:
+este repo ya va con `proxy.ts` en vez de `middleware.ts`, porque Next 16 ha decidido que las viejas costumbres habia que jubilarlas con cierta energia.
 
-- shell publico
-- bottom nav
-- menu overlay
-- home convertida en hub
-- pantallas publicas densas reorganizadas para escaneo movil
+### 2. React 19
 
-Si una pagina queda preciosa en desktop pero desde el movil obliga a hacer scroll como si fueras bajando el Everest, esa pagina esta mal resuelta. Fin de la cita.
+React lleva la parte de componentes e interaccion.
 
-## Las 4 superficies principales
+Sirve para construir piezas reutilizables como:
 
-### 1. Publico
+- navbar publica
+- menu movil
+- cards de equipos y WODs
+- dashboards admin
+- interfaz live de voluntario
 
-Es la parte que ve la mayoria de gente.
+La ventaja es obvia:
 
-Rutas clave:
+si una pieza mejora, no tienes que rehacer medio castillo a mano.
+
+### 3. Tailwind CSS 4
+
+Se usa `Tailwind 4` para la UI.
+
+Aqui viene bien porque el producto esta afinando mucho:
+
+- densidad de informacion
+- responsive real
+- jerarquia visual
+- superficies distintas segun rol
+
+En un proyecto asi, tocar clases rapido y ver el cambio enseguida vale oro.
+
+### 4. Supabase
+
+Supabase hace de varias cosas a la vez:
+
+- Postgres
+- auth
+- helpers SSR
+- realtime
+
+Eso encaja muy bien porque esta app vive de:
+
+- permisos
+- datos operativos
+- estado de evento
+- cambios live
+
+Supabase aqui no esta de invitado.
+Es media cocina.
+
+### 5. Base UI, Lucide y Sonner
+
+La UI base usa:
+
+- `@base-ui/react`
+- `lucide-react`
+- `sonner`
+
+Traduccion rapida:
+
+- Base UI pone primitives bastante limpias
+- Lucide da iconos consistentes
+- Sonner ensena toasts sin montar un circo para cada feedback
+
+## El mapa mental mas util: 5 capas
+
+La app se entiende mucho mejor si la divides asi:
+
+1. capa publica
+2. capa admin
+3. capa voluntario y juez
+4. capa live y overlay
+5. capa de personas, cuentas y registros
+
+Vamos una por una.
+
+## 1. Capa publica
+
+Rutas importantes:
 
 - `/`
 - `/cuenta`
 - `/registro/voluntarios`
 - `/registro/equipos`
+- `/directo`
+- `/horarios`
+- `/clasificacion`
+- `/wods`
+- `/galeria`
+- `/faq`
+- `/patrocinadores`
 - `/privacidad`
 - `/cookies`
 - `/bases-legales`
 - `/aviso-legal`
-- `/directo`
-- `/galeria`
-- `/horarios`
-- `/clasificacion`
-- `/wods`
-- `/patrocinadores`
-- `/faq`
 
-Su trabajo no es solo "quedar bien". Su trabajo es ayudar rapido.
-
-En movil, las preguntas tipicas son:
+Su trabajo no es solo quedar bonita.
+Su trabajo es contestar rapido a preguntas reales:
 
 - que esta pasando ahora
-- que heat viene despues
-- como va mi categoria
-- donde veo los WODs
-- donde esta el stream
+- como va la categoria
+- donde veo el stream
+- donde estan los WODs
+- como me registro
 
-Si la interfaz responde a eso rapido, gana. Si obliga a explorar como si fuera un museo, pierde.
+Si una pagina es preciosa en desktop pero en movil obliga a hacer scroll como quien baja una ladera con piedras, esa pagina no esta bien resuelta. Fin de la poesia.
 
-### 2. Admin
+## 2. Capa admin
 
-Es la cabina de mando de organizacion.
-
-Rutas base:
+Rutas importantes:
 
 - `/admin`
 - `/admin/evento`
 - `/admin/categorias`
 - `/admin/equipos`
+- `/admin/personas`
 - `/admin/wods`
 - `/admin/heats`
 - `/admin/puntuaciones`
 - `/admin/validacion`
-- `/admin/validacion/[heatId]`
 - `/admin/usuarios`
-- `/admin/personas`
 - `/admin/patrocinadores`
 - `/admin/voluntarios`
 - `/admin/streaming`
 - `/admin/media`
 
-Aqui se toca lo serio:
+Admin es la cabina de mando.
 
-- estructura de competicion
-- datos del evento
+Aqui se gestiona:
+
+- configuracion del evento
+- categorias
+- equipos y atletas
+- WODs y stages
 - heats
-- equipos
-- scores
+- borradores de puntuacion
+- validacion oficial
+- voluntariado
 - streaming
-- galeria y fotos oficiales
+- galeria
+- usuarios internos
 
-Admin no existe para decorar el repo. Existe para que la operativa no dependa de editar SQL con cara de poker.
+Admin no existe para decorar el sidebar.
+Existe para que la organizacion no dependa de "abre Supabase y reza un poco".
 
-Y ya no te deja tirado en movil:
-las superficies internas de admin y voluntario tienen cabecera propia con menu
-overlay, para que puedas cambiar de modulo o volver al sitio publico sin sentir
-que has entrado en una habitacion sin pomo.
+## 3. Capa voluntario y juez
 
-Y ahora el dashboard de `/admin` ya no es solo un saludo institucional con fondo oscuro.
-Hace de mesa de control:
-
-- estado del evento
-- heats activos o inmediatos
-- cola de validacion
-- equipos y voluntarios pendientes
-- accesos rapidos a streaming, media, personas y modulos de operativa
-
-Que es exactamente lo que deberia hacer un dashboard serio y no un poster de "bienvenido, campeon".
-
-### 3. Voluntario
-
-Es la parte de operacion live pensada para movil.
-
-Ruta clave:
+Rutas importantes:
 
 - `/voluntario`
 - `/voluntario/heat/[heatId]`
 
-Aqui la filosofia es una:
+Esta superficie esta pensada para velocidad de dedo, no para contemplar la vida.
 
-menos romanticismo visual y mas velocidad de dedo.
+La idea es:
 
-El voluntario no viene a contemplar la web. Viene a meter datos rapido, con targets grandes y con el menor margen de error posible.
+- ver lo necesario rapido
+- filtrar bien
+- entrar al heat correcto
+- meter datos sin pelearte con la interfaz
 
-### 4. Live y overlay
+Y aqui entra una matizacion importante:
+
+- `volunteer` sigue siendo el rol base
+- `is_judge` marca perfiles de juez dentro de ese flujo
+- `can_validate_scores` sigue siendo la capability seria de validacion oficial
+
+O sea:
+
+ser juez visible no equivale automaticamente a tener las llaves del marcador oficial.
+Y eso, sinceramente, es una decision muy sensata.
+
+## 4. Capa live y overlay
 
 Rutas:
 
 - `/live/[heatId]`
 - `/overlay/[heatId]`
 
-La vista live sirve para seguir el heat.
-La vista overlay sirve para integrarse con stream o realizacion.
+Estas dos superficies parecen primas, pero no hacen exactamente lo mismo.
 
-Es la diferencia entre "quiero verlo" y "quiero pincharlo en emision sin que se rompa nada".
+- `live` sirve para seguir el heat
+- `overlay` sirve para stream y realizacion
 
-## Como fluye la informacion
+Es la diferencia entre:
 
-Este es el mapa mental mas util del proyecto:
+- "quiero verlo"
+- "quiero sacarlo en emision sin que arda nada"
+
+## 5. Capa de personas, cuentas y registros
+
+Esta es probablemente la capa que da mas futuro al proyecto.
+
+La app ya no piensa solo en "usuario autenticado" o "atleta de este ano".
+Ya separa:
+
+- `people`: persona persistente
+- `profiles`: cuenta auth y rol
+- `athletes`: identidad deportiva actual
+- `edition_participations`: memoria de participacion entre ediciones
+
+Y ademas el alta auth ya esta mas blindada:
+
+- un nuevo `auth.users` intenta crear o reutilizar su `people`
+- las invitaciones del producto detectan antes si esa persona ya tenia cuenta
+- `/auth/setup` puede reparar perfiles invitados antiguos si aun no traian `person_id`
+- `/auth/callback` ya acepta tanto invitaciones como recuperaciones de contrasena
+- `/auth/reset-password` permite pedir enlace nuevo o fijar una nueva contrasena
+
+Esto importa mucho porque evita el clasico pecado de meter toda la identidad de una persona en un solo cajon y luego descubrir que no cabia.
+
+## Como fluye la informacion competitiva
+
+Este es el esquema mas importante del repo:
 
 ```text
 Admin configura evento, heats y contexto
         ->
-Voluntario mete datos live provisionales
+Voluntario mete live_updates provisionales
         ->
-Realtime los mueve a la capa live
+Realtime alimenta la capa live
         ->
-Head judge / admin validador revisa resultado oficial
+Admin validador revisa y corrige
         ->
-Score validado y publicado
+Scores validados/publicados
         ->
 Leaderboard oficial
 ```
 
-Esto importa mucho porque la app maneja dos verdades distintas:
+Hay dos verdades diferentes:
 
 - la verdad provisional del live
 - la verdad oficial del leaderboard
 
-No conviene mezclarlas alegremente, porque ahi nacen los dramas, las reclamaciones y la frase clasica de "pero si antes salia otra cosa".
+Si mezclas ambas sin cuidado, empiezan los dramas deportivos y la frase legendaria de:
 
-## Por que este stack y no otro
-
-## Next.js 16
-
-Se usa porque la app necesita:
-
-- rutas claras
-- renderizado server-side
-- buena base para SEO
-- mezclar pantallas publicas y operativa privada en el mismo producto
-
-Tambien viene con una nota importante:
-
-esta version no es "el Next de toda la vida". Tiene cambios reales y ya avisa de que `middleware` debe migrar a `proxy`.
-
-No es un drama, pero si una nota de deuda tecnica que no conviene olvidar.
-
-## React
-
-React esta para construir interfaces por piezas.
-
-Eso permite que cosas como:
-
-- navbar
-- menu movil
-- bottom nav
-- cards de heat
-- scoring interface
-
-se puedan reutilizar y refinar sin rehacer media app cada vez.
-
-## Tailwind
-
-Tailwind permite iterar muy rapido la UI y mantener coherencia.
-
-En un proyecto que esta ajustando:
-
-- shell
-- jerarquia visual
-- densidad de informacion
-- comportamiento movil
-
-eso ayuda bastante.
-
-## Supabase
-
-Supabase hace varios trabajos a la vez:
-
-- auth
-- Postgres
-- realtime
-- SSR helpers
-
-En una app como esta, eso encaja especialmente bien porque todo gira alrededor de datos de evento que cambian, permisos y actualizaciones live.
-
-## Server Actions
-
-Las mutaciones viven en `src/lib/actions/*.ts`.
-
-Esto esta bien porque deja la idea bastante limpia:
-
-- las paginas leen
-- las acciones mutan
-
-La gracia es que la logica importante no queda desperdigada por botones aleatorios del front.
-
-## Realtime
-
-La tabla `live_updates` y el hook `useRealtimeHeat` permiten mover el estado del live en tiempo real.
-
-Es una de las piezas mas importantes del valor del producto. Sin eso, esta app seria una web informativa con complejo de grandeza.
+"pero antes salia otra cosa"
 
 ## Como esta organizado el repo
 
@@ -296,337 +317,209 @@ Es una de las piezas mas importantes del valor del producto. Sin eso, esta app s
 
 Aqui viven las rutas y layouts.
 
-Hay grupos muy utiles:
+Grupos clave:
 
 - `(public)`
 - `(admin)`
 - `(volunteer)`
 - `(live)`
 
-Eso te deja ver bastante rapido que parte de la app estas tocando.
+Si te pierdes, mirar el grupo de ruta ya te dice mucho sobre la intencion de esa pantalla.
+
+Si lo que quieres no es entender la arquitectura sino saber que hace cada perfil humano dentro del sistema, mira tambien:
+
+- `docs/guia_perfiles_gijon_throwdown.md`
+- `docs/guias_operativas/README.md`
 
 ## `src/components`
 
 Aqui vive la UI reutilizable.
 
-Si quieres entender la experiencia publica, mira primero:
+Si quieres entender shell y navegacion:
 
 - `src/components/layout`
-- `src/components/home`
 
-Si quieres entender operativa, mira:
+Si quieres entender producto publico:
 
-- componentes de admin
-- componentes de scoring
+- `src/app/(public)`
+- `src/components/shared`
+- `src/components/media`
+
+Si quieres entender operativa:
+
+- clientes dentro de `src/app/(admin)/admin/**`
+- clientes dentro de `src/app/(volunteer)/voluntario/**`
 
 ## `src/lib/actions`
 
-Aqui estan las mutaciones.
+Aqui viven las mutaciones serias.
 
-Si un boton hace algo importante, es buena idea rastrearlo hasta aqui en vez de quedarte mirando solo el JSX como si fuera el final del camino.
+Idea muy util:
+
+- las paginas leen
+- las acciones mutan
+
+Si un boton hace algo importante, casi siempre el rastro bueno termina aqui.
+
+## `src/lib/auth`
+
+Aqui esta parte de la inteligencia de permisos y sesion.
+
+Especialmente importante:
+
+- `permissions.ts`
+- `session.ts`
+
+Esto evita tener el repo lleno de comparaciones de strings repartidas como confeti.
 
 ## `src/lib/supabase`
 
-Aqui estan los helpers de cliente, server, admin y middleware.
+Helpers de:
 
-Ojo con esto:
+- server
+- client
+- admin
+- middleware helper
 
-la proteccion de rutas ya vive en `proxy.ts`, no en `middleware.ts`, porque Next 16 aqui se puso exquisito y, sinceramente, con razon.
+Y la proteccion real de rutas pasa por `src/proxy.ts`.
 
 ## `supabase/migrations`
 
-Aqui esta la verdad de datos.
+Aqui esta la verdad del dominio.
 
-Archivos clave:
+Si alguna vez dudas entre:
 
-- `001_initial_schema.sql`
-- `002_rls_policies.sql`
-- `003_functions.sql`
-- `004_seed.sql`
+- "lo que parece que hace la UI"
+- "lo que de verdad permite el sistema"
 
-Si alguna vez dudas entre "lo que parece que hace la UI" y "lo que de verdad permite el sistema", las migraciones suelen ganar la discusion.
+las migraciones suelen ganar la pelea.
 
-## Que partes estan ya bastante solidas
+## Las tablas y entidades que mas importan
 
-- La separacion general entre publico, admin, voluntario y live
-- La base de datos del evento
-- El uso de Supabase para auth + realtime + datos
-- El dashboard de scoring como concepto operativo
-- La vista live y el overlay
-- El leaderboard apoyado en SQL
-- La nueva direccion mobile first del shell publico
+- `event_config`: configuracion viva del evento
+- `event_editions`: ediciones del evento
+- `people`: registro canonico de personas
+- `profiles`: cuenta auth, rol y flags
+- `categories`: categorias de competicion
+- `teams`: equipos
+- `athletes`: atletas confirmados
+- `edition_participations`: memoria por edicion
+- `volunteer_applications`: solicitudes de voluntariado
+- `team_registrations`: preinscripciones de equipo
+- `team_registration_members`: integrantes de esas preinscripciones
+- `workouts`: WODs
+- `workout_stages`: etapas de cada WOD
+- `heats`: series
+- `lanes`: calles
+- `live_updates`: capa provisional live
+- `scores`: capa oficial publicable
+- `volunteer_assignments`: asignaciones operativas
+- `stream_sessions`: sesiones publicas de directo y replay
+- `media`: galeria, descarga y compra configurable
+- `sponsors`: patrocinadores
 
-Hay una base real. No estamos levantando una catedral sobre servilletas.
+## El modelo de acceso, explicado sin humo
 
-## Que partes siguen claramente en obras
-
-## Roles y permisos
-
-La base ya esta implementada:
+Estado real del codigo:
 
 - `superadmin`
 - `admin`
 - `volunteer`
 - `athlete`
-- capability de `head_judge` via `can_validate_scores`
-- `is_judge` como especializacion visible del perfil de voluntario sin crear
-  un rol global nuevo para jueces
+- `profiles.can_validate_scores`
+- `profiles.is_judge`
 
-Tambien existen ya:
+Traduccion humana:
 
-- modulo de usuarios para superadmin
-- invitacion por email para staff interno
-- onboarding en `/auth/setup`
-- proteccion real de `/admin/usuarios`, `/admin/validacion` y `/voluntario`
-- shell publico que ya cambia segun sesion y rol
-- `/cuenta` como base de acceso y ya con lectura real para atleta enlazado
-- logout visible desde la navegacion publica
+- `superadmin`: manda en la plataforma
+- `admin`: manda en la operativa
+- `volunteer`: curra el live
+- `athlete`: consume y consulta
+- `can_validate_scores`: tiene el sello oficial
+- `is_judge`: se ve y se filtra como juez, pero no te regala automaticamente las llaves nucleares
 
-## Validacion oficial
+Es un modelo bastante mas sano que crear siete roles ceremoniales y luego no saber cual toca para cada cosa.
 
-La capa base ya existe y esta separada del scoring operativo.
+## La filosofia importante: mobile first de verdad
 
-Ahora el flujo es este:
+Aqui hay una decision de producto muy seria:
 
-- admin genera borrador desde el heat finalizado
-- validador corrige lo necesario
-- validador marca el heat como validado
-- solo entonces publica
-- despues recalcula puntos
+la app no debe pensarse como una web desktop que luego "se adapta un poco".
 
-Lo que aun falta aqui no es el concepto, sino profundidad:
+Debe pensarse como:
 
-- reglas de scoring configurables
-- mas herramientas de comparacion con hoja oficial
-- flujos mas ricos para escenarios raros
+- una interfaz de evento que nace para movil
+- y luego escala bien a desktop
 
-## Registro de personas
+Por eso se ha metido mano en:
 
-Esto ya no es solo una idea bonita en una servilleta. La base ya existe.
+- navbar publica
+- overlay movil
+- navegacion movil protegida
+- dashboards internos
+- tablas convertidas en cards en movil
+- filtros, pills y layouts menos torpes en smartphone
 
-La plataforma ya guarda o puede convertir personas persistentes para:
+Si algo funciona en escritorio pero en telefono se siente como empujar un armario por una escalera, aun no esta bien.
 
-- atletas
-- voluntarios
-- jueces
-- admins
+## Que partes estan ya bastante bien encaminadas
 
-Y la idea sigue siendo reutilizar eso entre ediciones.
+- shell publico auth-aware
+- cuenta publica y registros
+- people registry base
+- continuidad entre ediciones con primera capa real
+- scoring live de voluntario
+- validacion oficial
+- dashboard admin como centro de mando
+- CRUD de equipos, atletas, WODs y stages
+- UI de voluntarios y asignaciones
+- streaming publico por sesiones
+- galeria publica y admin de media
+- heroes editoriales y narrativa visual mas seria
+- navegacion movil para admin y voluntario
 
-Lo que existe ya hoy:
+Hay producto real aqui.
+No estamos maquillando un solar.
 
-- tabla `people` como registro canonico
-- `profiles.person_id` para enlazar cuenta auth con persona
-- `athletes.person_id` para enlazar atleta con persona
-- `event_editions` para modelar la edicion activa y futuras ediciones
-- `edition_participations` para empezar a guardar memoria por edicion
-- solicitud publica de voluntariado
-- esa solicitud publica de voluntariado ahora tambien recoge si la persona
-  quiere colaborar como juez
-- preinscripcion publica de equipos
-  con 4 atletas, composicion 3 chicos + 1 chica y atleta 1 como responsable
-- conversion admin desde:
-  - `/admin/voluntarios`
-  - `/admin/equipos`
-  - `/admin/personas`
+## Que sigue en obras
 
-Lo que todavia falta aqui no es empezar, sino profundizar:
-
-- historial serio entre ediciones
-- onboarding atleta mas redondo tras la invitacion
-- resolucion mas rica de duplicados o conflictos de identidad
-- capa legal y de retencion
-
-## WodBuster bridge
-
-La integracion visible con WodBuster esta definida como necesidad, pero no esta cerrada en la UI.
-
-## Legal y privacidad
-
-Tambien esta pendiente la parte seria de:
-
-- politica de privacidad realmente cerrada y afinada
-- consentimiento
-- retencion
-- caducidad de datos
-
-Ojo: ya existen paginas legales dentro de la propia web para privacidad,
-cookies, bases y aviso legal. Lo que falta no es "tener links", sino cerrar la
-parte de cumplimiento real, consentimiento registrable y retencion de datos.
-
-Si hay personas y registros, esto no es un extra decorativo. Es parte del producto.
-
-## Como pensar el modelo de roles
-
-## Estado actual
-
-El repo hoy protege sobre todo:
-
-- `/admin`
-- `/voluntario`
-
-Y ademas ya deja visible en front algo importante:
-
-- login integrado en la experiencia publica
-- menu adaptado a sesion
-- atajos por rol
-- cuenta publica para cualquier usuario autenticado
-
-## Estado objetivo
-
-La forma sana de pensarlo es esta:
-
-- `superadmin`: controla usuarios, roles y sistema
-- `admin`: controla operativa del evento
-- `volunteer`: alimenta el live
-- `athlete`: consume informacion y perfil
-- `head_judge`: valida resultados oficiales
-
-Lo interesante aqui es que `head_judge` no tiene por que ser un rol gigante separado. Puede ser una capacidad concreta sobre usuarios de tipo admin.
-
-Eso suele ser mas flexible y bastante menos lio.
-
-Y distinto de eso esta `is_judge`, que ahora ya existe como marca visible
-sobre perfiles de voluntariado para operativa y filtrado interno, sin tocar el
-rol global del sistema.
-
-## Como pensar el modelo de datos
-
-Hoy el proyecto esta bastante centrado en una sola edicion del evento.
-
-Pero ojo: ya no estamos en cero. La fase 4 ya ha separado una parte importante:
-
-- persona persistente
-- cuenta auth
-- identidad deportiva actual
-
-Lo que la vision futura pide completar es esto:
-
-- participacion por edicion
-- rol por edicion
-- equipos y membresias
-- consentimientos
-
-La app puede seguir mostrando una sola edicion activa en la UI y, a la vez, guardar historial por debajo. Esa mezcla tiene bastante sentido y evita convertir el producto en un monstruo multiproposito demasiado pronto.
-
-## Lo que se acaba de mejorar en esta fase
-
-### Profundidad operativa real
-
-- `/admin/equipos` ya no se queda solo en equipos:
-  ahora tambien permite gestionar atletas reales, editarlos y borrarlos sin irte a pelear con la base de datos a mano
-- `/admin/wods` ya no mira a `workout_stages` como si fueran espiritus del esquema:
-  ya hay UI real para crear, editar y eliminar etapas de cada WOD
-- `/admin/voluntarios` ya permite gestionar asignaciones operativas a heats y calles,
-  que era una de esas piezas que el esquema tenia pero la interfaz miraba de reojo
-- despues de convertir un equipo, admin ya puede lanzar la invitacion de atletas como paso explicito
-- el dashboard de voluntario ahora filtra mejor por categoria, heat, WOD y equipos,
-  asi que se parece bastante mas a una herramienta de evento y bastante menos a una lista simpatica
-
-### La capa atleta empieza a parecerse a algo serio
-
-- `/cuenta` ya traia contexto real de atleta enlazado
-- ahora ese contexto ya vive mejor conectado con la operativa porque existe una ruta clara:
-  preinscripcion -> conversion -> atleta real -> invitacion
-- `/cuenta` ya ensena una primera lectura de continuidad por edicion en lugar
-  de quedarse solo en "tu equipo actual y poco mas"
-- el onboarding de atleta tambien esta algo mas fino:
-  una invitacion de atleta ya no huele tanto a "te hemos colado en un panel interno por accidente"
-
-### Streaming y galeria ya son producto real
-
-- `/admin/streaming` ya no se limita a una URL triste:
-  ahora gestiona embed principal y sesiones publicas para directo o replay
-- `/directo` ya puede priorizar una sesion live real y ensenar archivo/replays
-  en vez de vivir siempre colgado del fallback del evento
-- `/admin/media` ya permite subir fotos al bucket privado `event-media`,
-  marcar visibilidad, destacar imagenes, activar descarga y pegar una URL de compra
-- `/galeria` y `/galeria/[id]` ya dan a la parte publica un sitio real para
-  ver fotos, descargar cuando toque y comprar cuando la organizacion lo configure
-- la descarga no va a pelo:
-  se sirve con URLs firmadas desde el server para no dejar el bucket abierto como un bar a las cuatro de la manana
-
-### Higiene tecnica
-
-- la nueva fase tambien queda con `lint:src`, `typecheck` y `build` en verde
-- las fotos editoriales viven ya en local y sus fuentes estan documentadas en `docs/photo-sources.md`
+- scoring configurable mas fino
+- puente visible con WodBuster
+- capa legal de consentimiento y retencion
+- historial atleta mas profundo
+- multi-edicion mas visible en la UI
+- sponsors con mas riqueza operativa
+- comercio de galeria mas completo si se quiere ir mas alla de `purchase_url`
 
 En resumen:
 
-ya no solo tenemos personas y registros. Ahora tambien hay herramientas reales para operarlos sin hacer malabares.
+lo gordo ya existe, pero aun quedan habitaciones por amueblar.
 
-## Si quieres entender la app en 30 minutos
+## Por donde entrar si me pierdo
 
-Yo seguiria este orden:
+Empieza por esto, en este orden:
 
 1. `README.md`
 2. `AGENTS.md`
-3. `MEMORY.md`
-4. `ROADMAP.md`
-5. `docs/chuleta_personal_gijon_throwdown.md`
-6. `src/app/(public)/layout.tsx`
-7. `src/components/layout/public-navigation.ts`
-8. `src/app/(public)/page.tsx`
-9. `src/app/(public)/directo/page.tsx`
-10. `src/app/(volunteer)/voluntario/heat/[heatId]/scoring-interface.tsx`
-11. `src/lib/hooks/use-realtime-heat.ts`
-12. `src/lib/actions/live-updates.ts`
-13. `supabase/migrations/001_initial_schema.sql`
-14. `supabase/migrations/003_functions.sql`
+3. `docs/chuleta_personal_gijon_throwdown.md`
+4. `docs/guia_perfiles_gijon_throwdown.md`
+5. `docs/guias_operativas/README.md`
+6. `docs/guia_tecnica_gijon_throwdown.md`
+7. `src/app/(public)/page.tsx`
+8. `src/app/(admin)/admin/page.tsx`
+9. `src/app/(volunteer)/voluntario/page.tsx`
+10. `src/lib/auth/permissions.ts`
+11. `src/proxy.ts`
+12. `supabase/migrations/001_initial_schema.sql`
+13. `supabase/migrations/007_people_registry_and_conversions.sql`
+14. `supabase/migrations/011_harden_auth_user_bootstrap.sql`
 
-Ese recorrido te ensena:
+Con eso ya dejas de mirar el repo como quien entra a un estadio sin saber donde esta su puerta.
 
-- la app como experiencia
-- la app como operativa
-- la app como modelo de datos
+## Frase-resumen para no liarte
 
-Y ya con eso tienes media pelicula bastante controlada.
+> Gijon Throwdown no es solo la web del evento. Es la web publica, la operativa live, la validacion oficial y la memoria de personas del evento intentando convivir en paz bajo el mismo techo.
 
-## Que tienes que recordar siempre
+Y si un dia estas cansado:
 
-- Esto no es solo una web publica.
-- Lo live provisional y lo oficial no son lo mismo.
-- Movil manda en la experiencia.
-- Supabase no es un accesorio; es columna vertebral.
-- El repo actual ya funciona, pero todavia esta en fase de consolidar su modelo definitivo.
-
-## Cosas que dependen de ti y no de un agente
-
-Hay decisiones y materiales que el codigo no se puede inventar solo.
-
-Necesitas concretar:
-
-- branding final y criterio visual definitivo
-- textos reales del evento
-- FAQ real
-- venue, direcciones y mapas definitivos
-- logos buenos de sponsors
-- enlaces reales a WodBuster
-- politica de privacidad y copy legal
-- reglas reales de scoring y desempates
-- alcance final del historico entre ediciones
-
-Sin eso, el producto puede avanzar mucho, pero llega un punto en que la app empieza a mirarte con cara de "muy bien todo, jefe, pero dame contenido real".
-
-## El remate final, sin poesia innecesaria
-
-Si hoy tocara cerrar el proyecto con cabeza, el orden util seria este:
-
-1. Alinear seed, categorias y datos demo con el formato real de 4 personas por equipo.
-2. Terminar `/admin/evento` para que controle FAQ, branding, mapas y edicion activa de verdad.
-3. Implementar scoring configurable, capa legal y puente visible con WodBuster.
-4. Aplicar migraciones, preparar superadmin real, revisar emails y hacer smoke test en produccion.
-
-No suena epico, pero es exactamente el tipo de lista que evita acabar con una demo muy mona y una operativa con agujeros.
-
-## El resumen mas corto posible
-
-Si manana alguien te pregunta "que demonios es Gijon Throwdown por dentro", una respuesta bastante buena seria esta:
-
-> Es una webapp de evento construida con Next.js, React, Tailwind y Supabase que une informacion publica, operativa live y scoring en tiempo real. Hoy ya sirve para mostrar el evento, operar heats, gestionar staff interno, validar resultados, convertir registros en personas/equipos reales y empezar a guardar continuidad entre ediciones; su siguiente evolucion es profundizar el perfil atleta, la capa legal y la convivencia con WodBuster.
-
-Y si quieres una version aun mas humana:
-
-> Es el cerebro digital del evento, y ahora ya empieza a tener memoria. Todavia le faltan cosas, pero ya no vive solo del presente inmediato.
-
-Que, dicho asi, suena raro. Pero tambien bastante cierto.
+> piensa en ella como "el escenario + la trastienda + el marcador", todo junto y con bastante menos drama del que podria tener.

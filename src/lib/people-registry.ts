@@ -89,6 +89,27 @@ export async function getProfileByEmail(
   return (data as ProfileRow | null) ?? null;
 }
 
+export async function getProfileByPersonId(
+  adminClient: AdminClient,
+  personId: string | null | undefined,
+) {
+  const normalizedPersonId = personId?.trim();
+
+  if (!normalizedPersonId) {
+    return null;
+  }
+
+  const { data } = await adminClient
+    .from("profiles")
+    .select(
+      "id, person_id, role, full_name, email, is_active, is_judge, can_validate_scores, invited_at, setup_completed_at",
+    )
+    .eq("person_id", normalizedPersonId)
+    .maybeSingle();
+
+  return (data as ProfileRow | null) ?? null;
+}
+
 export async function getPersonByEmail(
   adminClient: AdminClient,
   email: string | null | undefined,
@@ -263,7 +284,31 @@ export async function ensureProfileForPerson(params: {
     throw new Error("La persona necesita un email para crear o reutilizar una cuenta");
   }
 
-  const existingProfile = await getProfileByEmail(adminClient, normalizedEmail);
+  const [existingProfileByEmail, existingProfileByPerson] = await Promise.all([
+    getProfileByEmail(adminClient, normalizedEmail),
+    getProfileByPersonId(adminClient, personId),
+  ]);
+
+  if (
+    existingProfileByEmail &&
+    existingProfileByPerson &&
+    existingProfileByEmail.id !== existingProfileByPerson.id
+  ) {
+    throw new Error(
+      `El email ${normalizedEmail} ya pertenece a otra cuenta y la persona ya tiene un perfil distinto enlazado`,
+    );
+  }
+
+  if (
+    existingProfileByPerson &&
+    normalizeEmail(existingProfileByPerson.email) !== normalizedEmail
+  ) {
+    throw new Error(
+      `La persona ya tiene una cuenta vinculada a ${existingProfileByPerson.email}`,
+    );
+  }
+
+  const existingProfile = existingProfileByEmail ?? existingProfileByPerson;
   const role = resolveProfileRole(existingProfile?.role, requestedRole);
 
   if (existingProfile) {
@@ -335,7 +380,6 @@ export async function ensureProfileForPerson(params: {
       data: {
         full_name: fullName.trim(),
         role,
-        person_id: personId,
       },
       redirectTo,
     },

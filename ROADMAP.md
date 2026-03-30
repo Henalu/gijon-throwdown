@@ -1,6 +1,6 @@
 # Roadmap
 
-Last reviewed: 2026-03-29
+Last reviewed: 2026-03-30
 
 ## Phase 1 Closed
 
@@ -98,6 +98,8 @@ This batch is considered done:
   duplicate checks only block within the same edition, not forever
 - athlete and volunteer invite/conversion flows now sync participation history
   instead of only linking `people` and `profiles`
+- `011_harden_auth_user_bootstrap.sql` hardens new `auth.users` creation so
+  profile/person bootstrap does not depend on rich invite metadata alone
 - `/cuenta` now shows edition-aware athlete context and first participation history
 - `/admin/personas` now surfaces basic continuity signals instead of treating
   people as flat one-off rows
@@ -167,9 +169,10 @@ This is the most practical closing sequence from the current repo state.
 
 ### 4. Production Rollout And Smoke Pass
 
-- Apply migrations `005` through `010`
+- Apply migrations `005` through `011`
 - Promote the first real `superadmin`
 - Verify invite emails and `NEXT_PUBLIC_SITE_URL`
+- Verify password recovery emails and `/auth/reset-password`
 - Recheck production flows:
   public navigation, login/setup, volunteer dashboard, validation, account hub,
   public registrations, athlete conversion, directo, and galeria/download links
@@ -222,7 +225,8 @@ These are not blocked by code skill. They are blocked by product decisions, cont
   `007_people_registry_and_conversions.sql`, and
   `008_event_editions_and_participations.sql`, and
   `009_streaming_and_media_experience.sql`, and
-  `010_judge_profiles.sql` where they are not yet applied
+  `010_judge_profiles.sql`, and
+  `011_harden_auth_user_bootstrap.sql` where they are not yet applied
 
 ## Later
 

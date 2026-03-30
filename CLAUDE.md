@@ -6,6 +6,9 @@ Read these files first, in this order:
 4. `README.md`
 5. `docs/chuleta_personal_gijon_throwdown.md`
 6. `docs/guia_personal_gijon_throwdown.md`
+7. `docs/guia_tecnica_gijon_throwdown.md`
+8. `docs/guia_perfiles_gijon_throwdown.md`
+9. `docs/guias_operativas/README.md`
 
 Working rules:
 
@@ -36,6 +39,9 @@ Working rules:
 - The people registry foundation already exists:
   `people`, `profiles.person_id`, `athletes.person_id`, `/admin/personas`,
   and admin-side conversion of volunteer/team submissions.
+- Auth bootstrap is now expected to be resilient:
+  new `auth.users` rows should auto-create or reuse `people`, and invite flows
+  should detect existing person/profile links before creating another auth user.
 - Athlete account continuity has already started:
   `/cuenta` now reads edition-aware context/history and athlete setup routes
   should feel athlete-facing, not only internal/staff-facing.

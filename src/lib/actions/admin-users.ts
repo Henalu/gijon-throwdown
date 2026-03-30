@@ -8,7 +8,11 @@ import {
   upsertVolunteerEditionParticipation,
 } from "@/lib/editions";
 import { getCurrentSessionProfile } from "@/lib/auth/session";
-import { findOrCreatePerson } from "@/lib/people-registry";
+import {
+  findOrCreatePerson,
+  getProfileByEmail,
+  getProfileByPersonId,
+} from "@/lib/people-registry";
 import type { UserRole } from "@/types";
 
 const VALID_ROLES: UserRole[] = ["superadmin", "admin", "volunteer", "athlete"];
@@ -96,14 +100,19 @@ export async function inviteInternalUser(input: {
     notes: "Persona creada o reutilizada desde invitacion interna",
   });
 
-  const { data: existingProfile } = await adminClient
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
+  const [existingProfileByEmail, existingProfileByPerson] = await Promise.all([
+    getProfileByEmail(adminClient, email),
+    getProfileByPersonId(adminClient, person.id),
+  ]);
 
-  if (existingProfile) {
+  if (existingProfileByEmail) {
     return { error: "Ya existe un usuario con ese email" };
+  }
+
+  if (existingProfileByPerson) {
+    return {
+      error: `La persona ya tiene una cuenta vinculada a ${existingProfileByPerson.email}`,
+    };
   }
 
   const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent("/auth/setup")}`;
@@ -112,7 +121,6 @@ export async function inviteInternalUser(input: {
     data: {
       full_name: fullName,
       role: input.role,
-      person_id: person.id,
     },
     redirectTo,
   });

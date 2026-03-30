@@ -11,8 +11,10 @@ import { Label } from "@/components/ui/label";
 
 const errorMessages: Record<string, string> = {
   auth_failed: "No se pudo completar el acceso. Intentalo de nuevo.",
+  invite_failed: "No se pudo abrir la invitacion. Pide a la organizacion que la reenvie.",
   inactive: "Tu usuario existe, pero ahora mismo esta desactivado.",
   missing_profile: "La cuenta no tiene perfil operativo asociado todavia.",
+  recovery_failed: "No se pudo abrir el enlace de recuperacion. Pide uno nuevo.",
 };
 
 function LoginForm() {
@@ -99,7 +101,15 @@ function LoginForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Contrasena</Label>
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor="password">Contrasena</Label>
+          <Link
+            href="/auth/reset-password"
+            className="text-xs font-medium text-brand-green transition-colors hover:text-brand-green/80"
+          >
+            He olvidado mi contrasena
+          </Link>
+        </div>
         <Input
           id="password"
           type="password"

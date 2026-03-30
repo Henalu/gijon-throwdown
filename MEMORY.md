@@ -1,6 +1,6 @@
 # Memory
 
-Last updated: 2026-03-29
+Last updated: 2026-03-30
 
 ## Product Intent
 
@@ -22,6 +22,9 @@ Last updated: 2026-03-29
 - Notifications: Sonner toaster in root layout
 - Human-readable owner docs live in:
   `docs/guia_personal_gijon_throwdown.md` and
+  `docs/guia_tecnica_gijon_throwdown.md` and
+  `docs/guia_perfiles_gijon_throwdown.md` and
+  `docs/guias_operativas/README.md` and
   `docs/chuleta_personal_gijon_throwdown.md`
 
 ## Route Inventory
@@ -35,7 +38,7 @@ Last updated: 2026-03-29
 - Live:
   `/live/[heatId]`, `/overlay/[heatId]`
 - Auth:
-  `/auth/login`, `/auth/callback`, `/auth/setup`
+  `/auth/login`, `/auth/callback`, `/auth/setup`, `/auth/reset-password`
 
 ## Domain Model
 
@@ -64,6 +67,8 @@ Important SQL-side behavior:
 
 - RLS policies live in `supabase/migrations/002_rls_policies.sql`
 - `leaderboard` is a SQL view from `supabase/migrations/003_functions.sql`
+- `supabase/migrations/011_harden_auth_user_bootstrap.sql` hardens
+  `auth.users -> profiles` bootstrap and auto-links/creates `people`
 - realtime is enabled for `live_updates` and `heats`
 
 ## People Registry Direction
@@ -116,6 +121,8 @@ Implemented foundation:
 - `profiles.is_judge` now marks volunteer/judge specialization while keeping
   `profiles.role` as the global access source of truth
 - internal users can be invited by superadmin and complete `/auth/setup`
+- invite flows now preflight person/profile collisions before calling Supabase
+  Auth, instead of relying on `person_id` metadata during user creation
 
 Still missing on top of that foundation:
 
@@ -183,6 +190,11 @@ Recommended result lifecycle:
   manage public stream sessions in `/admin/streaming`,
   and manage the event gallery in `/admin/media`.
 - Internal invited users complete onboarding in `/auth/setup` before entering protected surfaces.
+- Login now exposes password recovery, `/auth/callback` accepts both `code`
+  and `token_hash` email flows, and `/auth/reset-password` lets users request
+  a reset link or set a new password after returning from email.
+- `/auth/setup` now also repairs legacy invited profiles that are missing
+  `person_id` by creating or reusing the canonical `people` row first.
 - Official flow is now:
   draft from heat -> validator edits -> validator validates heat -> publish -> calculate points.
 - Public and athlete consumption now share an auth-aware shell, and athlete accounts can already surface real team/ranking context when linked.
@@ -194,7 +206,7 @@ Recommended result lifecycle:
 
 ## Quality Snapshot
 
-Verified on 2026-03-29:
+Verified on 2026-03-30:
 
 - `npm run build`: OK
 - `npm run typecheck`: OK

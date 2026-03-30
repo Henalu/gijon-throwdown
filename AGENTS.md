@@ -47,6 +47,8 @@ This version has breaking changes - APIs, conventions, and file structure may al
 ## Auth And Access
 
 - `src/proxy.ts` now refreshes Supabase sessions and protects `/admin`, `/voluntario`, and `/auth/setup`.
+- `/auth/callback` now needs to support both invite and recovery email flows,
+  and `/auth/reset-password` is the public password recovery surface.
 - Write access is enforced primarily through Supabase RLS in `supabase/migrations/002_rls_policies.sql`.
 - The leaderboard comes from SQL objects in `supabase/migrations/003_functions.sql`.
 - Current implementation now supports:
@@ -55,6 +57,10 @@ This version has breaking changes - APIs, conventions, and file structure may al
 - Volunteer judges are tracked through `profiles.is_judge` and the unified
   volunteer registration flow, not through a separate global role.
 - Internal invited users must complete `/auth/setup` before entering protected surfaces.
+- `supabase/migrations/011_harden_auth_user_bootstrap.sql` hardens the
+  `auth.users -> profiles` bootstrap so new auth users can still create/reuse
+  canonical `people` links with sparse metadata, and app invite flows now
+  preflight profile/person collisions before calling Supabase Auth.
 - Public visitors can now submit pending volunteer/team registrations without creating auth accounts.
 - The codebase now also distinguishes:
   - persistent `people` records
@@ -100,7 +106,7 @@ This version has breaking changes - APIs, conventions, and file structure may al
 
 ## Verification Snapshot
 
-Reviewed on `2026-03-29`.
+Reviewed on `2026-03-30`.
 
 - `npm run build`: passes
 - `npm run typecheck`: passes
@@ -116,6 +122,9 @@ If you change routes, schema, auth behavior, operating assumptions, or delivery 
 - `MEMORY.md`
 - `ROADMAP.md`
 - `docs/guia_personal_gijon_throwdown.md`
+- `docs/guia_tecnica_gijon_throwdown.md`
+- `docs/guia_perfiles_gijon_throwdown.md`
+- `docs/guias_operativas/*.md`
 - `docs/chuleta_personal_gijon_throwdown.md`
 
 ## Safety Notes
