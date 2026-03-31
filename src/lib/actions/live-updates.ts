@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   closeOpenLanesForHeat,
   ensureLaneBelongsToHeat,
-  fetchHeatLaneResults,
+  fetchHeatLaneResult,
   fetchHeatLiveContext,
   type HeatLiveContext,
 } from "@/lib/live-results-server";
@@ -130,6 +130,7 @@ export async function submitLiveUpdate(data: {
   value: number;
   cumulative: number;
   workout_stage_id?: string;
+  client_event_id?: string;
 }): Promise<LiveMutationResult> {
   const actor = await requireLiveOperatorContext(data.heat_id);
   if ("error" in actor) {
@@ -159,9 +160,24 @@ export async function submitLiveUpdate(data: {
     return { error: "La lane no pertenece al heat indicado" };
   }
 
-  const existingResults = await fetchHeatLaneResults(actor.supabase, data.heat_id);
-  if (existingResults[data.lane_id]) {
+  const existingResult = await fetchHeatLaneResult(
+    actor.supabase,
+    data.heat_id,
+    data.lane_id,
+  );
+  if (existingResult) {
     return { error: "La calle ya esta cerrada" };
+  }
+
+  if (data.client_event_id) {
+    const { data: existing } = await actor.supabase
+      .from("live_updates")
+      .select("id")
+      .eq("client_event_id", data.client_event_id)
+      .maybeSingle();
+    if (existing) {
+      return { success: true };
+    }
   }
 
   const { error } = await actor.supabase.from("live_updates").insert({
@@ -172,13 +188,13 @@ export async function submitLiveUpdate(data: {
     value: data.value,
     cumulative: data.cumulative,
     submitted_by: actor.session.user.id,
+    ...(data.client_event_id ? { client_event_id: data.client_event_id } : {}),
   });
 
   if (error) {
     return { error: error.message };
   }
 
-  revalidateHeatLivePaths(data.heat_id);
   return { success: true };
 }
 
@@ -188,6 +204,7 @@ export async function saveLiveCheckpoint(data: {
   value: number;
   metric_type: LiveMetricType;
   elapsed_ms: number | null;
+  client_event_id?: string;
 }): Promise<LiveMutationResult> {
   const actor = await requireLiveOperatorContext(data.heat_id);
   if ("error" in actor) {
@@ -217,9 +234,24 @@ export async function saveLiveCheckpoint(data: {
     return { error: "La lane no pertenece al heat indicado" };
   }
 
-  const existingResults = await fetchHeatLaneResults(actor.supabase, data.heat_id);
-  if (existingResults[data.lane_id]) {
+  const existingResult = await fetchHeatLaneResult(
+    actor.supabase,
+    data.heat_id,
+    data.lane_id,
+  );
+  if (existingResult) {
     return { error: "La calle ya esta cerrada" };
+  }
+
+  if (data.client_event_id) {
+    const { data: existing } = await actor.supabase
+      .from("live_checkpoints")
+      .select("id")
+      .eq("client_event_id", data.client_event_id)
+      .maybeSingle();
+    if (existing) {
+      return { success: true };
+    }
   }
 
   const { error } = await actor.supabase.from("live_checkpoints").insert({
@@ -229,13 +261,13 @@ export async function saveLiveCheckpoint(data: {
     metric_type: data.metric_type,
     elapsed_ms: data.elapsed_ms,
     submitted_by: actor.session.user.id,
+    ...(data.client_event_id ? { client_event_id: data.client_event_id } : {}),
   });
 
   if (error) {
     return { error: error.message };
   }
 
-  revalidateHeatLivePaths(data.heat_id);
   return { success: true };
 }
 
@@ -247,10 +279,21 @@ export async function closeLaneResult(data: {
   final_metric_type: LiveMetricType;
   final_elapsed_ms: number | null;
   judge_notes?: string;
+  client_event_id?: string;
 }): Promise<LiveMutationResult> {
   const actor = await requireLiveOperatorContext(data.heat_id);
   if ("error" in actor) {
     return { error: actor.error };
+  }
+
+  const autoClosed = await maybeAutoCloseHeatAtCap({
+    supabase: actor.supabase,
+    heatId: data.heat_id,
+    actorId: actor.session.user.id,
+  });
+
+  if (autoClosed.error) {
+    return { error: autoClosed.error };
   }
 
   const lane = await ensureLaneBelongsToHeat(
@@ -279,7 +322,7 @@ export async function closeLaneResult(data: {
 
   const { data: existingResult } = await actor.supabase
     .from("live_lane_results")
-    .select("id, closed_by, closed_at")
+    .select("*")
     .eq("heat_id", data.heat_id)
     .eq("lane_id", data.lane_id)
     .maybeSingle();
@@ -288,13 +331,6 @@ export async function closeLaneResult(data: {
     const { error } = await actor.supabase
       .from("live_lane_results")
       .update({
-        close_reason: data.close_reason,
-        final_value: data.final_value,
-        final_metric_type: data.final_metric_type,
-        final_elapsed_ms:
-          data.close_reason === "time_cap" && capMs != null
-            ? capMs
-            : data.final_elapsed_ms,
         judge_notes: data.judge_notes?.trim() || null,
         updated_at: new Date().toISOString(),
       })
@@ -325,6 +361,7 @@ export async function closeLaneResult(data: {
     judge_notes: data.judge_notes?.trim() || null,
     closed_by: actor.session.user.id,
     updated_at: new Date().toISOString(),
+    ...(data.client_event_id ? { client_event_id: data.client_event_id } : {}),
   });
 
   if (error) {

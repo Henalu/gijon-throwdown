@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { fetchLatestLaneSnapshots } from "@/lib/live-results-server";
 import { requireValidationProfile } from "@/lib/auth/session";
 import { ValidationDetailClient } from "./validation-detail-client";
 
@@ -20,59 +21,56 @@ export default async function ValidationHeatPage({ params }: PageProps) {
     `/admin/validacion/${heatId}`,
   );
 
-  const [
-    { data: heat },
-    { data: scores },
-    { data: liveUpdates },
-    { data: liveLaneResults },
-    { data: liveCheckpoints },
-  ] =
-    await Promise.all([
-      supabase
-        .from("heats")
-        .select(`
-          id,
-          heat_number,
-          status,
-          scheduled_at,
-          started_at,
-          finished_at,
-          category:categories(name),
-          workout:workouts(id, name, score_type, wod_type),
-          lanes(id, lane_number, team:teams(id, name, box_name))
-        `)
-        .eq("id", heatId)
-        .single(),
-      supabase
-        .from("scores")
-        .select(
-          "id, team_id, workout_id, heat_id, time_ms, reps, weight_kg, rounds, remaining_reps, points, is_rx, is_cap, penalty_seconds, is_published, notes, verified_by, verified_at, team:teams(name, category_id), workout:workouts(name, score_type)",
-        )
-        .eq("heat_id", heatId)
-        .order("created_at"),
-      supabase
-        .from("live_updates")
-        .select("lane_id, update_type, cumulative, created_at")
-        .eq("heat_id", heatId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("live_lane_results")
-        .select("*")
-        .eq("heat_id", heatId),
-      supabase
-        .from("live_checkpoints")
-        .select("id, lane_id, value, metric_type, elapsed_ms, created_at")
-        .eq("heat_id", heatId)
-        .order("created_at"),
-    ]);
+  const { data: heat } = await supabase
+    .from("heats")
+    .select(`
+      id,
+      heat_number,
+      status,
+      scheduled_at,
+      started_at,
+      finished_at,
+      category:categories(name),
+      workout:workouts(id, name, score_type, wod_type),
+      lanes(id, lane_number, team:teams(id, name, box_name))
+    `)
+    .eq("id", heatId)
+    .single();
 
   if (!heat) {
     notFound();
   }
 
+  const workout = getSingleRelation(heat.workout);
+
+  const [
+    { data: scores },
+    latestSnapshots,
+    { data: liveLaneResults },
+    { data: liveCheckpoints },
+  ] = await Promise.all([
+    supabase
+      .from("scores")
+      .select(
+        "id, team_id, workout_id, heat_id, time_ms, reps, weight_kg, rounds, remaining_reps, points, is_rx, is_cap, penalty_seconds, is_published, notes, verified_by, verified_at, team:teams(name, category_id), workout:workouts(name, score_type)",
+      )
+      .eq("heat_id", heatId)
+      .order("created_at"),
+    fetchLatestLaneSnapshots(supabase, heatId, workout?.score_type ?? "reps"),
+    supabase
+      .from("live_lane_results")
+      .select("*")
+      .eq("heat_id", heatId),
+    supabase
+      .from("live_checkpoints")
+      .select("id, lane_id, value, metric_type, elapsed_ms, created_at")
+      .eq("heat_id", heatId)
+      .order("created_at"),
+  ]);
+
   const latestByLane = new Map<
     string,
-    { lane_id: string; update_type: string; cumulative: number; created_at: string }
+    { lane_id: string; update_type: string; cumulative: number; created_at: string | null }
   >();
   const laneResultsByLane = new Map(
     ((liveLaneResults ?? []) as Array<{
@@ -96,10 +94,13 @@ export default async function ValidationHeatPage({ params }: PageProps) {
     }>
   >();
 
-  for (const update of liveUpdates ?? []) {
-    if (!latestByLane.has(update.lane_id)) {
-      latestByLane.set(update.lane_id, update);
-    }
+  for (const snapshot of Object.values(latestSnapshots)) {
+    latestByLane.set(snapshot.lane_id, {
+      lane_id: snapshot.lane_id,
+      update_type: snapshot.update_type,
+      cumulative: snapshot.cumulative,
+      created_at: snapshot.created_at,
+    });
   }
 
   for (const checkpoint of (liveCheckpoints ?? []) as Array<{

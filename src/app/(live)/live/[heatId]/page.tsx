@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { LiveHeatView } from "./live-heat-view";
+import { fetchHeatLaneResults, fetchLatestLaneSnapshots } from "@/lib/live-results-server";
 import { getYoutubeEmbedUrl } from "@/lib/streaming";
 import type { LiveLaneResult, LiveMetricType, WorkoutStage } from "@/types";
 
@@ -40,21 +41,14 @@ export default async function LiveHeatPage({ params }: PageProps) {
   } | null;
 
   const [
-    { data: liveUpdates },
-    { data: laneResults },
+    latestSnapshots,
+    laneResults,
     { data: liveSession },
     { data: eventConfig },
     { data: workoutStages },
   ] = await Promise.all([
-    supabase
-      .from("live_updates")
-      .select("*")
-      .eq("heat_id", heatId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("live_lane_results")
-      .select("*")
-      .eq("heat_id", heatId),
+    fetchLatestLaneSnapshots(supabase, heatId, workout?.score_type ?? "reps"),
+    fetchHeatLaneResults(supabase, heatId),
     supabase
       .from("stream_sessions")
       .select("title, youtube_url")
@@ -83,21 +77,17 @@ export default async function LiveHeatPage({ params }: PageProps) {
       final_elapsed_ms: number | null;
     }
   > = {};
-  const seen = new Set<string>();
-  for (const update of liveUpdates ?? []) {
-    if (!seen.has(update.lane_id)) {
-      seen.add(update.lane_id);
-      initialLaneStates[update.lane_id] = {
-        cumulative: update.cumulative,
-        is_finished: false,
-        close_reason: null,
-        final_metric_type: null,
-        final_elapsed_ms: null,
-      };
-    }
+  for (const snapshot of Object.values(latestSnapshots)) {
+    initialLaneStates[snapshot.lane_id] = {
+      cumulative: snapshot.cumulative,
+      is_finished: false,
+      close_reason: null,
+      final_metric_type: null,
+      final_elapsed_ms: null,
+    };
   }
 
-  for (const result of ((laneResults ?? []) as LiveLaneResult[])) {
+  for (const result of Object.values(laneResults) as LiveLaneResult[]) {
     initialLaneStates[result.lane_id] = {
       cumulative: result.final_value,
       is_finished: true,

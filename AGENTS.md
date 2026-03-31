@@ -50,6 +50,10 @@ This version has breaking changes - APIs, conventions, and file structure may al
   `live_updates` for granular score changes,
   `live_checkpoints` for optional manual partials,
   and `live_lane_results` for lane closure state, final elapsed time, and judge notes.
+- Live hydration should prefer the SQL snapshot `get_heat_live_state()` over replaying
+  the whole `live_updates` history whenever the surface only needs the latest per-lane state.
+- Normal judge score taps/checkpoint saves are expected to propagate through Realtime;
+  reserve broad `revalidatePath()` invalidations for lane closure, heat closure, and official scoring flows.
 
 ## Auth And Access
 

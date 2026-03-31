@@ -10,6 +10,13 @@ import type {
 } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
+interface HeatLiveSnapshotRow {
+  lane_id: string;
+  update_type: string | null;
+  cumulative: number | null;
+  last_updated: string | null;
+}
+
 export interface LaneState {
   lane_id: string;
   cumulative: number;
@@ -43,18 +50,22 @@ function applyLaneResultToState(
 }
 
 function buildLaneStates(
-  updates: LiveUpdate[],
+  snapshots: HeatLiveSnapshotRow[],
   results: LiveLaneResult[],
 ): Record<string, LaneState> {
   const states: Record<string, LaneState> = {};
 
-  for (const update of updates) {
-    states[update.lane_id] = {
-      lane_id: update.lane_id,
-      cumulative: update.cumulative,
-      last_update_type: update.update_type,
+  for (const snapshot of snapshots) {
+    if (!snapshot.last_updated) {
+      continue;
+    }
+
+    states[snapshot.lane_id] = {
+      lane_id: snapshot.lane_id,
+      cumulative: snapshot.cumulative ?? 0,
+      last_update_type: snapshot.update_type ?? "reps",
       is_finished: false,
-      last_updated_at: update.created_at,
+      last_updated_at: snapshot.last_updated,
       close_reason: null,
       final_metric_type: null,
       final_elapsed_ms: null,
@@ -124,14 +135,13 @@ export function useRealtimeHeat(
   const [lastUpdate, setLastUpdate] = useState<LiveUpdate | null>(null);
   const [heatStatus, setHeatStatus] = useState(initialHeatStatus ?? "pending");
 
-  const fetchFullState = useCallback(async () => {
-    const [{ data: updates, error: updatesError }, { data: results, error: resultsError }, { data: heat, error: heatError }] =
+  const fetchCurrentState = useCallback(async () => {
+    const [{ data: snapshots, error: snapshotsError }, { data: results, error: resultsError }, { data: heat, error: heatError }] =
       await Promise.all([
         supabaseRef.current
-          .from("live_updates")
-          .select("*")
-          .eq("heat_id", heatId)
-          .order("created_at", { ascending: true }),
+          .rpc("get_heat_live_state", {
+            p_heat_id: heatId,
+          }),
         supabaseRef.current
           .from("live_lane_results")
           .select("*")
@@ -143,8 +153,8 @@ export function useRealtimeHeat(
           .maybeSingle(),
       ]);
 
-    if (updatesError) {
-      console.error("[useRealtimeHeat] updates fetch error:", updatesError.message);
+    if (snapshotsError) {
+      console.error("[useRealtimeHeat] snapshot fetch error:", snapshotsError.message);
       return;
     }
 
@@ -158,23 +168,22 @@ export function useRealtimeHeat(
       return;
     }
 
-    const liveUpdates = (updates ?? []) as LiveUpdate[];
+    const liveSnapshots = ((snapshots ?? []) as HeatLiveSnapshotRow[]).map((snapshot) => ({
+      ...snapshot,
+      update_type: snapshot.update_type ?? "reps",
+    }));
     const liveResults = (results ?? []) as LiveLaneResult[];
 
-    setLaneStates(buildLaneStates(liveUpdates, liveResults));
+    setLaneStates(buildLaneStates(liveSnapshots, liveResults));
     setHeatStatus(heat?.status ?? initialHeatStatus ?? "pending");
-
-    if (liveUpdates.length > 0) {
-      setLastUpdate(liveUpdates[liveUpdates.length - 1]);
-    }
   }, [heatId, initialHeatStatus]);
 
   const startPolling = useCallback(() => {
     if (pollingRef.current) return;
     pollingRef.current = setInterval(() => {
-      fetchFullState();
+      fetchCurrentState();
     }, 3000);
-  }, [fetchFullState]);
+  }, [fetchCurrentState]);
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -185,9 +194,6 @@ export function useRealtimeHeat(
 
   useEffect(() => {
     const supabase = supabaseRef.current;
-    const initialFetchTimer = setTimeout(() => {
-      void fetchFullState();
-    }, 0);
 
     const channel = supabase
       .channel(`live-heat-${heatId}`)
@@ -238,7 +244,7 @@ export function useRealtimeHeat(
         if (status === "SUBSCRIBED") {
           setIsConnected(true);
           stopPolling();
-          fetchFullState();
+          void fetchCurrentState();
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           console.warn(
             "[useRealtimeHeat] channel error, falling back to polling",
@@ -254,13 +260,12 @@ export function useRealtimeHeat(
     channelRef.current = channel;
 
     return () => {
-      clearTimeout(initialFetchTimer);
       stopPolling();
       supabase.removeChannel(channel);
       channelRef.current = null;
       setIsConnected(false);
     };
-  }, [heatId, fetchFullState, startPolling, stopPolling]);
+  }, [heatId, fetchCurrentState, startPolling, stopPolling]);
 
   return { laneStates, isConnected, lastUpdate, heatStatus };
 }

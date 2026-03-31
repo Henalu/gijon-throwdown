@@ -97,6 +97,41 @@ export async function finalizeHeat(
     };
   }
 
+  const lanesMissingLaneResult = lanes.some((lane) => !liveLaneResults[lane.id]);
+  const latestLegacyUpdateByLane = new Map<
+    string,
+    { update_type: string; cumulative: number; created_at: string }
+  >();
+  const finishedLegacyUpdateByLane = new Map<
+    string,
+    { update_type: string; cumulative: number; created_at: string }
+  >();
+
+  if (lanesMissingLaneResult) {
+    const { data: legacyUpdates, error: legacyUpdatesError } = await supabase
+      .from("live_updates")
+      .select("lane_id, update_type, cumulative, created_at")
+      .eq("heat_id", heatId)
+      .order("created_at", { ascending: false });
+
+    if (legacyUpdatesError) {
+      return { error: legacyUpdatesError.message };
+    }
+
+    for (const update of legacyUpdates ?? []) {
+      if (!latestLegacyUpdateByLane.has(update.lane_id)) {
+        latestLegacyUpdateByLane.set(update.lane_id, update);
+      }
+
+      if (
+        update.update_type === "finished" &&
+        !finishedLegacyUpdateByLane.has(update.lane_id)
+      ) {
+        finishedLegacyUpdateByLane.set(update.lane_id, update);
+      }
+    }
+  }
+
   const scores: {
     team_id: string;
     workout_id: string;
@@ -151,19 +186,8 @@ export async function finalizeHeat(
         reps = finalValue;
       }
     } else {
-      const { data: updates, error: updatesError } = await supabase
-        .from("live_updates")
-        .select("update_type, cumulative, created_at")
-        .eq("lane_id", lane.id)
-        .eq("heat_id", heatId)
-        .order("created_at", { ascending: false });
-
-      if (updatesError) {
-        return { error: updatesError.message };
-      }
-
-      const latestUpdate = updates?.[0] ?? null;
-      const finishedUpdate = updates?.find((u) => u.update_type === "finished");
+      const latestUpdate = latestLegacyUpdateByLane.get(lane.id) ?? null;
+      const finishedUpdate = finishedLegacyUpdateByLane.get(lane.id) ?? null;
 
       if (workout.wod_type === "for_time") {
         if (finishedUpdate && heat.started_at) {

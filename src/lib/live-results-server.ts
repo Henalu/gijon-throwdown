@@ -35,8 +35,20 @@ export interface HeatLiveContext {
 export interface LatestLaneSnapshot {
   lane_id: string;
   cumulative: number;
+  update_type: LiveMetricType;
   metric_type: LiveMetricType;
-  created_at: string;
+  created_at: string | null;
+}
+
+interface HeatLiveSnapshotRow {
+  lane_id: string;
+  lane_number: number | null;
+  team_id: string | null;
+  team_name: string | null;
+  box_name: string | null;
+  update_type: string | null;
+  cumulative: number | null;
+  last_updated: string | null;
 }
 
 function getSingleRelation<T>(value: T | T[] | null): T | null {
@@ -122,12 +134,9 @@ export async function fetchLatestLaneSnapshots(
   heatId: string,
   scoreType: ScoreType | string,
 ): Promise<Record<string, LatestLaneSnapshot>> {
-  const { data, error } = await supabase
-    .from("live_updates")
-    .select("lane_id, cumulative, update_type, created_at")
-    .eq("heat_id", heatId)
-    .order("lane_id")
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("get_heat_live_state", {
+    p_heat_id: heatId,
+  });
 
   if (error) {
     throw new Error(error.message);
@@ -135,18 +144,37 @@ export async function fetchLatestLaneSnapshots(
 
   const snapshots: Record<string, LatestLaneSnapshot> = {};
 
-  for (const row of data ?? []) {
-    if (!snapshots[row.lane_id]) {
-      snapshots[row.lane_id] = {
-        lane_id: row.lane_id,
-        cumulative: row.cumulative,
-        metric_type: normalizeMetricType(row.update_type, scoreType),
-        created_at: row.created_at,
-      };
-    }
+  for (const row of ((data ?? []) as HeatLiveSnapshotRow[])) {
+    const metricType = normalizeMetricType(row.update_type, scoreType);
+    snapshots[row.lane_id] = {
+      lane_id: row.lane_id,
+      cumulative: row.cumulative ?? 0,
+      update_type: metricType,
+      metric_type: metricType,
+      created_at: row.last_updated,
+    };
   }
 
   return snapshots;
+}
+
+export async function fetchHeatLaneResult(
+  supabase: SupabaseClient,
+  heatId: string,
+  laneId: string,
+): Promise<LiveLaneResult | null> {
+  const { data, error } = await supabase
+    .from("live_lane_results")
+    .select("*")
+    .eq("heat_id", heatId)
+    .eq("lane_id", laneId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as LiveLaneResult | null) ?? null;
 }
 
 export async function fetchHeatLaneResults(
@@ -211,7 +239,10 @@ export async function closeOpenLanesForHeat(params: {
     });
 
   if (rows.length > 0) {
-    const { error } = await supabase.from("live_lane_results").insert(rows);
+    const { error } = await supabase.from("live_lane_results").upsert(rows, {
+      onConflict: "heat_id,lane_id",
+      ignoreDuplicates: true,
+    });
     if (error) {
       throw new Error(error.message);
     }

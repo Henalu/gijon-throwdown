@@ -133,6 +133,10 @@ This batch is considered done:
 - lane closure now stores close reason, final value, final elapsed time, and judge notes
 - reaching the time cap now auto-closes open lanes, freezes live scoring, and preserves the latest cumulative value
 - `finalizeHeat` now prefers provisional lane closures over raw `live_updates`
+- live/overlay/volunteer/validation now hydrate from `get_heat_live_state()`
+  instead of replaying the full `live_updates` history on first load
+- normal judge score taps and checkpoint saves now lean on Realtime without
+  broad route invalidation, and `closeLaneResult` also passes through the cap guard
 - `/admin/validacion` now surfaces judge notes and recent checkpoints for faster official review
 - `/voluntario` now gives judge profiles a desktop sidebar and a richer dashboard
   with assigned heats, active event heats, finished assigned heats, and WOD references

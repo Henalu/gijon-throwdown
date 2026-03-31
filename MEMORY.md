@@ -73,6 +73,8 @@ Important SQL-side behavior:
 - `supabase/migrations/011_harden_auth_user_bootstrap.sql` hardens
   `auth.users -> profiles` bootstrap and auto-links/creates `people`
 - realtime is enabled for `live_updates`, `live_lane_results`, and `heats`
+- live consumers now hydrate from the SQL snapshot `get_heat_live_state()`
+  instead of replaying the whole `live_updates` history on first load
 
 ## People Registry Direction
 
@@ -184,6 +186,8 @@ Recommended result lifecycle:
 - WOD detail page reads `workout_stages`.
 - Leaderboard page reads directly from SQL view `leaderboard`.
 - Volunteer UI now checks heat operability before writing live updates and only exposes assigned/live-enabled heats.
+- Volunteer/live/overlay/validation hydration now boots from per-lane snapshot state,
+  which keeps reconnects and page loads proportional to lane count instead of update history.
 - Volunteer dashboard now adds category/search filtering and can match category, workout, heat label, and team names.
 - Judge profiles now get a stronger desktop experience inside `/voluntario`:
   sidebar navigation, grouped operational sections, and direct links to WOD standards
@@ -192,6 +196,8 @@ Recommended result lifecycle:
   optional manual checkpoints in any WOD,
   provisional lane closure with judge notes,
   and automatic heat/lane closure at time cap so normal live editing stops when the cap is reached.
+- Judge score taps and checkpoint saves now rely on realtime propagation instead of broad path revalidation,
+  while `closeLaneResult` also passes through the time-cap guard so a late manual close cannot leave the heat inconsistent.
 - Admin panel can create/update/delete most event entities, enable/disable live entry per heat,
   manage internal users as superadmin, route official score review through `/admin/validacion`,
   review volunteer/team public submissions, convert them into real people/entities,

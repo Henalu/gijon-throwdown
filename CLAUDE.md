@@ -57,5 +57,10 @@ Working rules:
   `live_updates` is the granular realtime stream,
   `live_checkpoints` stores optional manual partials for any WOD,
   and `live_lane_results` stores lane closure, final elapsed time, and judge notes.
+- For live consumers, prefer the SQL snapshot `get_heat_live_state()` when you only
+  need the latest per-lane state; avoid replaying the full `live_updates` log unless
+  you are explicitly debugging history or covering a legacy fallback path.
+- Treat `submitLiveUpdate` and `saveLiveCheckpoint` as realtime-driven hot paths:
+  broad `revalidatePath()` invalidations now belong to lane/heat closure and official scoring, not every tap.
 - Public `/live/[heatId]` now also supports two consumption modes:
   leaderboard-only and combined video + leaderboard, plus an in-place WOD detail modal.

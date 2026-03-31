@@ -1,14 +1,30 @@
+import type { Metadata, Viewport } from "next";
 import {
   ProtectedMobileNav,
   type ProtectedMobileNavLink,
 } from "@/components/layout/protected-mobile-nav";
 import { VolunteerDesktopSidebar } from "@/components/layout/volunteer-desktop-sidebar";
+import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import {
   getPanelTitle,
   getProfileRoleLabel,
   isJudgeProfile,
 } from "@/lib/auth/permissions";
 import { requireVolunteerSurfaceProfile } from "@/lib/auth/session";
+
+export const metadata: Metadata = {
+  manifest: "/manifest.json",
+  title: "GT Juez",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "GT Juez",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0d0f0d",
+};
 
 export default async function VolunteerLayout({
   children,
@@ -56,6 +72,7 @@ export default async function VolunteerLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <RegisterServiceWorker />
       <ProtectedMobileNav
         title={panelTitle}
         viewer={profile}

@@ -328,6 +328,12 @@ Regla importante desde esta fase:
 - `live_updates` ya no es toda la historia
 - `live_checkpoints` guarda parciales manuales
 - `live_lane_results` guarda el cierre provisional por calle
+- `get_heat_live_state()` da el ultimo estado por calle para hidratar live,
+  overlay, voluntario y validacion sin replayar todo el historico
+- `submitLiveUpdate` y `saveLiveCheckpoint` ya no deberian usarse como disparador
+  de revalidaciones amplias: el camino normal ahi es Realtime
+- cuando una calle ya tiene `live_lane_results`, el live deja de reescribir score:
+  desde ese punto solo se actualiza la observacion del juez y la correccion real pasa a validacion
 - si algo falla en finalizacion, cap o notas del juez, casi seguro el rastro bueno esta en esas piezas
 
 ### Validacion oficial

@@ -87,6 +87,14 @@ Hub digital para una competicion funcional por equipos. El proyecto combina:
   `live_checkpoints` guarda parciales manuales para cualquier WOD y
   `live_lane_results` guarda el cierre provisional por calle con motivo,
   tiempo final y nota del juez para que validacion pueda reconstruir el heat.
+- Las superficies live ya no arrancan replayando todo el historico:
+  `get_heat_live_state()` sirve el ultimo estado por calle para
+  `/voluntario/heat/[heatId]`, `/live/[heatId]`, `/overlay/[heatId]`
+  y validacion, mientras que `live_updates` queda como stream granular y fallback legacy.
+- Los taps normales del juez ya no invalidan media app:
+  `submitLiveUpdate` y `saveLiveCheckpoint` descansan en Supabase Realtime,
+  y las invalidaciones de rutas quedan reservadas para cierres de calle,
+  cierres de heat y publicacion/validacion oficial.
 - La vista publica de heat en `/live/[heatId]` ya no se limita al leaderboard:
   ahora puede alternar entre modo ranking puro y modo combinado con video embebido
   + leaderboard, ademas de abrir el detalle del WOD en un modal sin salir del directo.
@@ -127,6 +135,11 @@ Direccion tecnica ya aplicada en esta fase:
 - El panel de voluntario/juez ya puede guardar parciales opcionales en cualquier WOD
 - Si un equipo termina antes del cap, el juez puede cerrar su calle con tiempo final y observacion
 - Si el heat alcanza el time cap, el sistema cierra automaticamente las calles abiertas, congela la edicion live y conserva el ultimo valor registrado
+- `closeLaneResult` ya pasa por el mismo guard del cap que el resto del live:
+  si el cap ya vencio, no puede dejar una calle manualmente coherente mientras el resto siga abierta
+- Una calle ya cerrada en el live no se reescribe libremente desde pista:
+  despues del cierre, el flujo live queda reducido a observaciones/notas del juez
+  y cualquier correccion de score debe pasar por validacion oficial
 - El dashboard del juez ya separa heats asignados, heats activos del evento, heats finalizados propios y WODs de referencia con acceso a standards
 - Head judge o admin validador revisa la hoja oficial, corrige si hace falta y valida el resultado final
 - El leaderboard oficial solo consolida scores validados/publicados, no cualquier cambio live

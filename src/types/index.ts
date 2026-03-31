@@ -181,6 +181,8 @@ export interface Lane {
   heat_id: string;
   team_id: string;
   lane_number: number;
+  locked_by: string | null;
+  locked_at: string | null;
   created_at: string;
 }
 
@@ -193,6 +195,7 @@ export interface LiveUpdate {
   value: number;
   cumulative: number;
   submitted_by: string;
+  client_event_id: string | null;
   created_at: string;
 }
 
@@ -206,6 +209,7 @@ export interface LiveLaneResult {
   final_elapsed_ms: number | null;
   judge_notes: string | null;
   closed_by: string;
+  client_event_id: string | null;
   closed_at: string;
   updated_at: string;
 }
@@ -218,6 +222,7 @@ export interface LiveCheckpoint {
   metric_type: LiveMetricType;
   elapsed_ms: number | null;
   submitted_by: string;
+  client_event_id: string | null;
   created_at: string;
 }
 

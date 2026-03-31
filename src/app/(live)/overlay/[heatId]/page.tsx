@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { OverlayView } from "./overlay-view";
+import { fetchHeatLaneResults, fetchLatestLaneSnapshots } from "@/lib/live-results-server";
 import type { LiveLaneResult, LiveMetricType } from "@/types";
 
 interface PageProps {
@@ -26,16 +27,14 @@ export default async function OverlayPage({ params }: PageProps) {
 
   if (!heat) notFound();
 
-  const [{ data: liveUpdates }, { data: laneResults }] = await Promise.all([
-    supabase
-      .from("live_updates")
-      .select("lane_id, cumulative, update_type")
-      .eq("heat_id", heatId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("live_lane_results")
-      .select("*")
-      .eq("heat_id", heatId),
+  const workout = heat.workout as unknown as {
+    name: string;
+    score_type: string;
+    time_cap_seconds: number | null;
+  } | null;
+  const [latestSnapshots, laneResults] = await Promise.all([
+    fetchLatestLaneSnapshots(supabase, heatId, workout?.score_type ?? "reps"),
+    fetchHeatLaneResults(supabase, heatId),
   ]);
 
   const initialStates: Record<
@@ -48,21 +47,17 @@ export default async function OverlayPage({ params }: PageProps) {
       final_elapsed_ms: number | null;
     }
   > = {};
-  const seen = new Set<string>();
-  for (const u of liveUpdates ?? []) {
-    if (!seen.has(u.lane_id)) {
-      seen.add(u.lane_id);
-      initialStates[u.lane_id] = {
-        cumulative: u.cumulative,
-        is_finished: false,
-        close_reason: null,
-        final_metric_type: null,
-        final_elapsed_ms: null,
-      };
-    }
+  for (const snapshot of Object.values(latestSnapshots)) {
+    initialStates[snapshot.lane_id] = {
+      cumulative: snapshot.cumulative,
+      is_finished: false,
+      close_reason: null,
+      final_metric_type: null,
+      final_elapsed_ms: null,
+    };
   }
 
-  for (const result of ((laneResults ?? []) as LiveLaneResult[])) {
+  for (const result of Object.values(laneResults) as LiveLaneResult[]) {
     initialStates[result.lane_id] = {
       cumulative: result.final_value,
       is_finished: true,
@@ -71,8 +66,6 @@ export default async function OverlayPage({ params }: PageProps) {
       final_elapsed_ms: result.final_elapsed_ms,
     };
   }
-
-  const workout = heat.workout as unknown as { name: string; score_type: string; time_cap_seconds: number | null } | null;
   const lanes = (heat.lanes as unknown as Array<{ id: string; lane_number: number; team: { name: string } | null }>) ?? [];
 
   return (

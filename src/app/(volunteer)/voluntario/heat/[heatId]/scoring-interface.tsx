@@ -22,11 +22,19 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   autoCloseHeatAtCap,
-  closeLaneResult,
-  saveLiveCheckpoint,
-  submitLiveUpdate,
 } from "@/lib/actions/live-updates";
+import {
+  acquireLaneLock,
+  refreshLaneLock,
+  releaseLaneLock,
+} from "@/lib/actions/lane-locks";
 import { useRealtimeHeat } from "@/lib/hooks/use-realtime-heat";
+import { db } from "@/lib/offline/db";
+import {
+  useOfflineScoring,
+  useConnectionStatus,
+  useSyncStatus,
+} from "@/lib/offline/hooks";
 import {
   formatElapsedMs,
   getDefaultLiveMetric,
@@ -133,11 +141,16 @@ export function ScoringInterface({
   const [autoClosing, setAutoClosing] = useState(false);
   const [savingCheckpoint, setSavingCheckpoint] = useState(false);
   const [savingResult, setSavingResult] = useState(false);
+  const [lockWarning, setLockWarning] = useState<string | null>(null);
 
   const { laneStates, isConnected, heatStatus: liveHeatStatus } = useRealtimeHeat(
     heatId,
     heatStatus,
   );
+
+  const isOnline = useConnectionStatus();
+  const { state: syncState, stats: syncStats } = useSyncStatus();
+  const { submitUpdate, saveCheckpoint: offlineSaveCheckpoint, closeLane } = useOfflineScoring(heatId);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<{
@@ -218,21 +231,19 @@ export function ScoringInterface({
     if (!pending) return true;
     pendingRef.current = null;
 
-    const result = await submitLiveUpdate({
-      lane_id: pending.lane_id,
-      heat_id: heatId,
-      update_type: pending.type,
-      value: pending.value,
-      cumulative: pending.cumulative,
-    });
-
-    if ("error" in result) {
-      toast.error("Error al enviar: " + result.error);
+    try {
+      await submitUpdate({
+        laneId: pending.lane_id,
+        updateType: pending.type,
+        value: pending.value,
+        cumulative: pending.cumulative,
+      });
+      return true;
+    } catch (err) {
+      toast.error("Error al encolar: " + (err instanceof Error ? err.message : "Error desconocido"));
       return false;
     }
-
-    return true;
-  }, [heatId]);
+  }, [submitUpdate]);
 
   const getCurrentElapsedMs = () => getElapsedMs(heatStartedAt) ?? null;
   const currentElapsedMs = getCurrentElapsedMs();
@@ -279,6 +290,57 @@ export function ScoringInterface({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
+
+  // Pre-cache heat context in IndexedDB for offline resilience
+  useEffect(() => {
+    void db.heatContexts.put({
+      heatId,
+      heatNumber,
+      heatStatus,
+      heatStartedAt,
+      workoutName,
+      workoutType,
+      scoreType,
+      timeCap,
+      categoryName,
+      lanes,
+      cachedAt: Date.now(),
+    });
+  }, [heatId, heatNumber, heatStatus, heatStartedAt, workoutName, workoutType, scoreType, timeCap, categoryName, lanes]);
+
+  // Lane lock heartbeat — refresh every 60s while a lane is selected
+  useEffect(() => {
+    if (!selectedLane || !isOnline) return;
+    const interval = setInterval(() => {
+      void refreshLaneLock(selectedLane.id);
+    }, 60_000);
+    return () => {
+      clearInterval(interval);
+      // Release lock on deselect
+      void releaseLaneLock(selectedLane.id);
+    };
+  }, [selectedLane, isOnline]);
+
+  const handleSelectLane = async (lane: LaneInfo) => {
+    if (!isOnline) {
+      // Allow offline selection without lock
+      setSelectedLane(lane);
+      setLockWarning(null);
+      return;
+    }
+    const result = await acquireLaneLock(lane.id);
+    if (result.locked) {
+      setSelectedLane(lane);
+      setLockWarning(null);
+    } else {
+      setLockWarning(
+        `Esta calle esta siendo puntuada por ${result.lockedByName ?? "otro juez"}`,
+      );
+      toast.error(
+        `Calle ${lane.lane_number} bloqueada por ${result.lockedByName ?? "otro juez"}`,
+      );
+    }
+  };
 
   const handleScore = (laneId: string, delta: number) => {
     const currentLaneState = getLaneState(laneId);
@@ -327,34 +389,32 @@ export function ScoringInterface({
     if (!flushed) return;
 
     setSavingCheckpoint(true);
-    const result = await saveLiveCheckpoint({
-      lane_id: selectedLane.id,
-      heat_id: heatId,
-      value: laneState.cumulative,
-      metric_type: metric,
-      elapsed_ms: getCurrentElapsedMs(),
-    });
-    setSavingCheckpoint(false);
+    try {
+      await offlineSaveCheckpoint({
+        laneId: selectedLane.id,
+        value: laneState.cumulative,
+        metricType: metric,
+        elapsedMs: getCurrentElapsedMs(),
+      });
 
-    if ("error" in result) {
-      toast.error(result.error);
-      return;
+      setCheckpointsByLane((prev) => ({
+        ...prev,
+        [selectedLane.id]: [
+          ...(prev[selectedLane.id] ?? []),
+          {
+            id: `local-${Date.now()}`,
+            value: laneState.cumulative,
+            metric_type: metric,
+            elapsed_ms: getCurrentElapsedMs(),
+            created_at: new Date().toISOString(),
+          },
+        ],
+      }));
+      toast.success(isOnline ? "Parcial guardado" : "Parcial guardado localmente");
+    } catch {
+      toast.error("Error al guardar parcial");
     }
-
-    setCheckpointsByLane((prev) => ({
-      ...prev,
-      [selectedLane.id]: [
-        ...(prev[selectedLane.id] ?? []),
-        {
-          id: `local-${Date.now()}`,
-          value: laneState.cumulative,
-          metric_type: metric,
-          elapsed_ms: getCurrentElapsedMs(),
-          created_at: new Date().toISOString(),
-        },
-      ],
-    }));
-    toast.success("Parcial guardado");
+    setSavingCheckpoint(false);
   };
 
   const openResultDialog = () => {
@@ -390,39 +450,38 @@ export function ScoringInterface({
     const finalValue = laneState.cumulative;
 
     setSavingResult(true);
-    const result = await closeLaneResult({
-      lane_id: selectedLane.id,
-      heat_id: heatId,
-      close_reason: closeReason,
-      final_value: finalValue,
-      final_metric_type: finalMetricType,
-      final_elapsed_ms: effectiveElapsedMs,
-      judge_notes: resultNotes,
-    });
-    setSavingResult(false);
-
-    if ("error" in result) {
-      toast.error(result.error);
-      return;
-    }
-
-    setOptimisticLaneStates((prev) => ({
-      ...prev,
-      [selectedLane.id]: {
-        cumulative: finalValue,
-        isFinished: true,
+    try {
+      await closeLane({
+        laneId: selectedLane.id,
         closeReason,
+        finalValue,
         finalMetricType,
         finalElapsedMs: effectiveElapsedMs,
-        judgeNotes: resultNotes.trim() || null,
-        closedAt: new Date().toISOString(),
-        updatedAt: Date.now(),
-      },
-    }));
-    setResultDialogOpen(false);
-    toast.success(
-      closeReason === "time_cap" ? "Calle cerrada por cap" : "Calle finalizada",
-    );
+        judgeNotes: resultNotes,
+      });
+
+      setOptimisticLaneStates((prev) => ({
+        ...prev,
+        [selectedLane.id]: {
+          cumulative: finalValue,
+          isFinished: true,
+          closeReason,
+          finalMetricType,
+          finalElapsedMs: effectiveElapsedMs,
+          judgeNotes: resultNotes.trim() || null,
+          closedAt: new Date().toISOString(),
+          updatedAt: Date.now(),
+        },
+      }));
+      setResultDialogOpen(false);
+      const suffix = isOnline ? "" : " (se sincronizara al recuperar conexion)";
+      toast.success(
+        (closeReason === "time_cap" ? "Calle cerrada por cap" : "Calle finalizada") + suffix,
+      );
+    } catch {
+      toast.error("Error al cerrar calle");
+    }
+    setSavingResult(false);
   };
 
   const formatTimer = (elapsed: number | null) => {
@@ -450,11 +509,16 @@ export function ScoringInterface({
           </div>
         </div>
         <p className="text-sm text-muted-foreground">Selecciona tu calle:</p>
+        {lockWarning && (
+          <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm text-orange-400">
+            {lockWarning}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
           {lanes.map((lane) => (
             <button
               key={lane.id}
-              onClick={() => setSelectedLane(lane)}
+              onClick={() => void handleSelectLane(lane)}
               className="rounded-xl border-2 border-border bg-card p-6 text-center transition-colors active:scale-[0.97] hover:border-brand-green/60"
             >
               <p className="text-3xl font-black text-brand-green">
@@ -486,7 +550,7 @@ export function ScoringInterface({
       <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-2">
-            <button onClick={() => setSelectedLane(null)} className="p-2 -ml-2">
+            <button onClick={() => { setSelectedLane(null); setLockWarning(null); }} className="p-2 -ml-2">
               <ArrowLeft size={20} />
             </button>
             <div>
@@ -496,16 +560,33 @@ export function ScoringInterface({
               <p className="text-xs text-muted-foreground">{workoutName}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {isConnected ? (
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {!isOnline && (
+              <Badge className="border-orange-500/30 bg-orange-500/15 text-xs text-orange-400">
+                Sin conexion
+              </Badge>
+            )}
+            {syncStats.pending > 0 && (
+              <Badge className="border-yellow-500/30 bg-yellow-500/15 text-xs text-yellow-400">
+                {syncState.phase === "syncing" && "synced" in syncState
+                  ? `Sync ${syncState.synced}/${syncState.total}`
+                  : `${syncStats.pending} pendiente${syncStats.pending > 1 ? "s" : ""}`}
+              </Badge>
+            )}
+            {syncStats.failed > 0 && (
+              <Badge className="border-red-500/30 bg-red-500/15 text-xs text-red-400">
+                {syncStats.failed} error{syncStats.failed > 1 ? "es" : ""}
+              </Badge>
+            )}
+            {isOnline && syncStats.pending === 0 && syncStats.failed === 0 && isConnected ? (
               <Badge className="border-brand-green/30 bg-brand-green/20 text-xs text-brand-green">
                 Conectado
               </Badge>
-            ) : (
+            ) : isOnline && isConnected ? null : isOnline ? (
               <Badge className="border-yellow-500/30 bg-yellow-500/20 text-xs text-yellow-500">
                 Reconectando...
               </Badge>
-            )}
+            ) : null}
             {liveHeatStatus === "active" ? (
               <Badge className="border-red-500/30 bg-red-500/20 text-xs text-red-400 animate-pulse-live">
                 <Radio size={10} className="mr-1" />
